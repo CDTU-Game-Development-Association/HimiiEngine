@@ -1,6 +1,7 @@
 #include "Hepch.h"
 #include "Renderer.h"
-#include "Himii//Renderer/Renderer2D.h"
+#include "Himii/Renderer/Renderer2D.h"
+#include "Himii/Renderer/Renderer3D.h"
 #include "Platform/OpenGL/OpenGLShader.h"
 
 namespace Himii
@@ -13,6 +14,7 @@ namespace Himii
 
         RenderCommand::Init();
         Renderer2D::Init();
+        Renderer3D::Init();
     }
 
     void Renderer::OnWindowResize(uint32_t width, uint32_t height)

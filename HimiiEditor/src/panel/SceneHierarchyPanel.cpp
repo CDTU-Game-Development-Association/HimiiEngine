@@ -25,6 +25,8 @@ namespace Himii
         m_ComponentIcons["Box Collider2D"] = Texture2D::Create("resources/icons/Component_BoxCollider.png");
         m_ComponentIcons["Circle Collider2D"] = Texture2D::Create("resources/icons/Component_CircleCollider.png");
         m_ComponentIcons["Sprite Animation"] = Texture2D::Create("resources/icons/Component_Animator.png");
+        // Using SpriteRenderer icon as placeholder, or generate new one. For now re-use or use nullptr
+        m_ComponentIcons["Mesh Renderer"] = Texture2D::Create("resources/icons/Component_SpriteRenderer.png"); 
     }
 
     SceneHierarchyPanel::SceneHierarchyPanel(const Ref<Scene>& context)
@@ -75,6 +77,7 @@ namespace Himii
                 DisplayAddComponentEntry<Rigidbody2DComponent>("Rigidbody2D");
                 DisplayAddComponentEntry<BoxCollider2DComponent>("Box Collider2D");
                 DisplayAddComponentEntry<CircleCollider2DComponent>("Circle Collider2D");
+                DisplayAddComponentEntry<MeshComponent>("Mesh Renderer");
 
                 ImGui::EndPopup();
             }
@@ -265,8 +268,7 @@ namespace Himii
             ImGui::Separator();
             
         // --- Custom Icon Header ---
-            void* componentID = (void*)typeid(T).hash_code();
-            ImGui::PushID(componentID);
+            ImGui::PushID(name.c_str());
             
             bool open = ImGui::GetStateStorage()->GetInt(ImGui::GetID("IsOpen"), 1);
 
@@ -324,16 +326,15 @@ namespace Himii
             // Selectable advanced Y by lineHeight. 
             // Our overlay drawing logic mostly stayed on the same line or advanced locally.
             // We should ensure we are at the line *after* the header.
+            // Left empty to remove the misplaced PopID in previous block
             ImGui::SetCursorPos(ImVec2(elementPos.x, elementPos.y + lineHeight));
-
-            ImGui::PopID();
-            ImGui::PopStyleVar();
-
             ImGui::SameLine(contentRegionAvailable.x - lineHeight * 0.5f);
             if (ImGui::Button("+", ImVec2{lineHeight, lineHeight}))
             {
                 ImGui::OpenPopup("ComponentSetting");
             }
+            
+            ImGui::PopStyleVar(); // Pop FramePadding after header and button
 
             bool removeComponent = false;
             if (ImGui::BeginPopup("ComponentSetting"))
@@ -350,6 +351,8 @@ namespace Himii
 
             if (removeComponent)
                 entity.RemoveComponent<T>();
+            
+            ImGui::PopID(); // Pop Component ID at the very end
         }
     }
 
@@ -383,6 +386,7 @@ namespace Himii
             DisplayAddComponentEntry<BoxCollider2DComponent>("Box Collider2D");
             DisplayAddComponentEntry<CircleCollider2DComponent>("Circle Collider2D");
             DisplayAddComponentEntry<SpriteAnimationComponent>("Sprite Animation");
+            DisplayAddComponentEntry<MeshComponent>("Mesh Renderer");
 
             ImGui::EndPopup();
         }
@@ -566,6 +570,13 @@ namespace Himii
 
                     DrawFloatControl("Tiling Factor", component.TilingFactor, 0.1f, 0.0f, 100.0f);
                 });
+
+        DrawComponent<MeshComponent>(
+                 "Mesh Renderer", entity, m_ComponentIcons["Mesh Renderer"],
+                 [](auto &component)
+                 {
+                     DrawColorControl("Color", component.Color);
+                 });
 
         DrawComponent<CircleRendererComponent>("Circle Renderer", entity, m_ComponentIcons["Circle Renderer"],
                                                [](auto &component)

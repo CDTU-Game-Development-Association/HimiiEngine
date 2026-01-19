@@ -2,7 +2,6 @@ project(HimiiEditor)
 
 file(GLOB_RECURSE SOURCES "./src/*.cpp")
 
-# 头锟侥硷拷为src目录锟铰碉拷锟斤拷锟斤拷.h锟侥硷拷
 file(GLOB_RECURSE HEADERS "./src/*.h")
 
 set(ALL_SOURCES

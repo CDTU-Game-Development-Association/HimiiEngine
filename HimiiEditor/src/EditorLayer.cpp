@@ -3,6 +3,8 @@
 #include "Himii/Scripting/ScriptEngine.h"
 #include "Himii/Project/Project.h"
 
+#include "Himii/Renderer/Renderer3D.h"
+
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
@@ -28,7 +30,13 @@ namespace Himii
         m_IconStop = Texture2D::Create("resources/icons/stop.png");
         m_IconSimulate = Texture2D::Create("resources/icons/simulate.png");
 
+        std::vector<std::string> skyboxFaces = {"resources/skybox/right.bmp", "resources/skybox/left.bmp",
+                                                "resources/skybox/top.bmp",   "resources/skybox/bottom.bmp",
+                                                "resources/skybox/front.bmp", "resources/skybox/back.bmp"};
+        m_SkyboxTexture = TextureCube::Create(skyboxFaces);
+
         m_EditorScene = CreateRef<Scene>();
+        m_EditorScene->SetSkybox(m_SkyboxTexture);
         m_ActiveScene = m_EditorScene;
 
 
@@ -136,7 +144,14 @@ namespace Himii
         if (mouseX >= 0 && mouseY >= 0 && mouseX < (int)viewportSize.x && mouseY < (int)viewportSize.y)
         {
             int pixelData = m_Framebuffer->ReadPixel(1, mouseX, mouseY);
-            m_HoveredEntity = pixelData == -1 ? Entity() : Entity((entt::entity)pixelData, m_ActiveScene.get());
+            if (pixelData != -1 && m_ActiveScene->Registry().valid((entt::entity)pixelData))
+            {
+                 m_HoveredEntity = Entity((entt::entity)pixelData, m_ActiveScene.get());
+            }
+            else
+            {
+                m_HoveredEntity = Entity();
+            }
         }
 
         OnOverlayRender();
@@ -316,7 +331,8 @@ namespace Himii
             Entity selectEntity = m_SceneHierarchyPanel.GetSelectedEntity();
             if (selectEntity && m_GizmoType != -1)
             {
-                ImGuizmo::SetOrthographic(false);
+                bool is2D = Project::GetConfig().Is2D;
+                ImGuizmo::SetOrthographic(is2D);
                 ImGuizmo::SetDrawlist();
 
                 float windowWidth = ImGui::GetWindowWidth();
@@ -500,21 +516,18 @@ namespace Himii
 
         if (m_ShowGrid)
         {
-            // Grid Rendering
-            const float gridSize = 100.0f;
-            const float gridSpacing = 1.0f;
-            const glm::vec4 gridColor = glm::vec4(0.6f, 0.6f, 0.6f, 1.0f);
-            
-            // Draw Vertical lines
-            for (float x = -gridSize; x <= gridSize; x += gridSpacing)
+            if (m_SceneState == SceneState::Play)
             {
-                Renderer2D::DrawLine(glm::vec3(x, -gridSize, 0.0f), glm::vec3(x, gridSize, 0.0f), gridColor);
+               Entity camera = m_ActiveScene->GetPrimaryCameraEntity();
+               if(camera)
+               {
+                   Renderer3D::DrawGrid(camera.GetComponent<CameraComponent>().Camera,
+                                        camera.GetComponent<TransformComponent>().GetTransform());
+               }
             }
-            
-            // Draw Horizontal lines
-            for (float y = -gridSize; y <= gridSize; y += gridSpacing)
+            else
             {
-                Renderer2D::DrawLine(glm::vec3(-gridSize, y, 0.0f), glm::vec3(gridSize, y, 0.0f), gridColor);
+                Renderer3D::DrawGrid(m_EditorCamera);
             }
         }
 
@@ -618,6 +631,7 @@ namespace Himii
         newProject->GetConfig().AssetDirectory = "assets"; // 相对路径
         newProject->GetConfig().StartScene = relativeScenePath;
         newProject->GetConfig().ScriptModulePath = "bin/Debug/GameAssembly.dll";
+        newProject->GetConfig().Is2D = is2D;
 
         // 3. 序列化 .hproj 文件
         Project::SaveActive(newProjectFilePath);
@@ -866,6 +880,10 @@ namespace Himii
 
         m_ActiveScene = CreateRef<Scene>();
         m_ActiveScene->OnViewportResize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+
+        if (m_SkyboxTexture)
+            m_ActiveScene->SetSkybox(m_SkyboxTexture);
+
         m_SceneHierarchyPanel.SetContext(m_ActiveScene);
 
         m_EditorScenePath = std::filesystem::path();
@@ -1063,6 +1081,9 @@ namespace Himii
         if (serializer.Deserialize(path.string()))
         {
             m_EditorScene = newScene;
+
+            if (m_SkyboxTexture)
+                m_EditorScene->SetSkybox(m_SkyboxTexture);
             m_SceneHierarchyPanel.SetContext(m_EditorScene);
             m_EditorScene->OnViewportResize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
 

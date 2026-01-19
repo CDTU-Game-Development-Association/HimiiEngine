@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <array>
+#include <vector>
 #include "glm/vec2.hpp"
 #include "Himii/Core/Core.h"
 #include "Himii/Asset/Asset.h"
@@ -15,16 +16,14 @@ namespace Himii
         RGBA32F
     };
 
-    struct TextureSpecification
-    {
+    struct TextureSpecification {
         uint32_t Width = 1;
         uint32_t Height = 1;
         ImageFormat Format = ImageFormat::RGBA8;
         bool GenerateMips = false;
     };
 
-    class Texture : public Asset
-    {
+    class Texture : public Asset {
     public:
         virtual ~Texture() = default;
 
@@ -38,23 +37,28 @@ namespace Himii
 
         virtual void SetData(void *data, uint32_t size) = 0;
 
-        virtual void Bind(uint32_t slot=0) const = 0;
+        virtual void Bind(uint32_t slot = 0) const = 0;
 
         virtual bool IsLoaded() const = 0;
 
-        virtual bool operator==(const Texture &other) const=0;
+        virtual bool operator==(const Texture &other) const = 0;
 
         virtual AssetType GetType() const override
         {
             return AssetType::Texture2D;
         }
+
     private:
     };
 
-    class Texture2D :public Texture
-    {
+    class Texture2D : public Texture {
     public:
-        static Ref<Texture2D> Create(uint32_t width,uint32_t height);
+        static Ref<Texture2D> Create(uint32_t width, uint32_t height);
         static Ref<Texture2D> Create(const std::string &path);
     };
-} // namespace Himii
+
+    class TextureCube : public Texture {
+    public:
+        static Ref<TextureCube> Create(const std::vector<std::string> &path);
+    };
+}; // namespace Himii

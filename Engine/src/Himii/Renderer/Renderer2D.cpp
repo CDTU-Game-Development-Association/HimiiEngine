@@ -210,6 +210,7 @@ namespace Himii
 
         s_Data.CameraBuffer.ViewProjection = camera.GetViewProjection();
         s_Data.CameraUniformBuffer->SetData(&s_Data.CameraBuffer, sizeof(Renderer2DData::CameraData));
+        s_Data.CameraUniformBuffer->Bind();
 
         StartBatch();
     }
@@ -220,6 +221,7 @@ namespace Himii
 
         s_Data.CameraBuffer.ViewProjection = camera.GetProjection() * glm::inverse(transform);
         s_Data.CameraUniformBuffer->SetData(&s_Data.CameraBuffer, sizeof(Renderer2DData::CameraData));
+        s_Data.CameraUniformBuffer->Bind();
 
         StartBatch();
     }

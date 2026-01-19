@@ -102,7 +102,7 @@ namespace Himii
         float m_PerspectiveNear = 0.01f, m_PerspectiveFar = 1000.0f;
 
         float m_OrthographicSize = 10.0f;
-        float m_OrthographicNear = -1.0f, m_OrthographicFar = 1.0f;
+        float m_OrthographicNear = -100.0f, m_OrthographicFar = 100.0f;
 
         float m_AspectRatio = 0.0f;
     };

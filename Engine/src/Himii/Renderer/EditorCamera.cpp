@@ -131,8 +131,19 @@ namespace Himii
     bool EditorCamera::OnMouseScroll(MouseScrolledEvent &e)
     {
         float delta = e.GetYOffset() * 0.1f;
-        MouseZoom(delta);
-        UpdateView();
+
+        if (Input::IsMouseButtonPressed(Mouse::ButtonRight))
+        {
+            m_MoveSpeed += e.GetYOffset() * 0.5f;
+            if (m_MoveSpeed < 0.1f) m_MoveSpeed = 0.1f;
+            if (m_MoveSpeed > 100.0f) m_MoveSpeed = 100.0f;
+        }
+        else
+        {
+            MouseZoom(delta);
+            UpdateView();
+        }
+        
         return false;
     }
 

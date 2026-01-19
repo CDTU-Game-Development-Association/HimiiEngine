@@ -6,6 +6,7 @@
 #include "Himii/Asset/AssetManager.h"
 #include "Himii/Project/Project.h"
 #include "Himii/Renderer/Renderer2D.h"
+#include "Himii/Renderer/Renderer3D.h"
 #include "Himii/Scene/SpriteAnimation.h"
 #include "Himii/Scripting/ScriptEngine.h"
 #include "ScriptableEntity.h"
@@ -254,6 +255,29 @@ namespace Himii
             }
             Renderer2D::EndScene();
         }
+
+        {
+             // 3D Rendering (MeshComponent)
+             if (mainCamera)
+             {
+                 Renderer3D::BeginScene(*mainCamera, cameraTransform);
+
+                 if (m_SkyboxTexture)
+                     Renderer3D::DrawSkybox(m_SkyboxTexture, *mainCamera, cameraTransform);
+
+                 Renderer3D::DrawGrid(*mainCamera, cameraTransform);
+
+                 auto view = m_Registry.view<TransformComponent, MeshComponent>();
+                 view.each([&](entt::entity entity, TransformComponent &transform, MeshComponent &mesh)
+                 {
+                     if (mesh.Type == MeshComponent::MeshType::Cube)
+                         Renderer3D::DrawCube(transform.GetTransform(), mesh.Color, (int)entity);
+                     else if (mesh.Type == MeshComponent::MeshType::Plane)
+                         Renderer3D::DrawPlane(transform.GetTransform(), mesh.Color, (int)entity);
+                 });
+                 Renderer3D::EndScene();
+             }
+        }
     }
 
     void Scene::OnUpdateSimulation(Timestep ts, EditorCamera &camera)
@@ -314,6 +338,8 @@ namespace Himii
         newScene->m_ViewportWidth = other->m_ViewportWidth;
         newScene->m_ViewportHeight = other->m_ViewportHeight;
 
+        newScene->m_SkyboxTexture = other->m_SkyboxTexture;
+
         auto &srcSceneRegistry = other->m_Registry;
         auto &dstSceneRegistry = newScene->m_Registry;
         std::unordered_map<UUID, entt::entity> enttMap;
@@ -339,6 +365,7 @@ namespace Himii
         CopyComponent<BoxCollider2DComponent>(dstSceneRegistry, srcSceneRegistry, enttMap);
         CopyComponent<CircleCollider2DComponent>(dstSceneRegistry, srcSceneRegistry, enttMap);
         CopyComponent<SpriteAnimationComponent>(dstSceneRegistry, srcSceneRegistry, enttMap);
+        CopyComponent<MeshComponent>(dstSceneRegistry, srcSceneRegistry, enttMap);
 
         return newScene;
     }
@@ -377,6 +404,9 @@ namespace Himii
 
         if (entity.HasComponent<SpriteAnimationComponent>())
             newEntity.AddComponent<SpriteAnimationComponent>(entity.GetComponent<SpriteAnimationComponent>());
+
+        if (entity.HasComponent<MeshComponent>())
+            newEntity.AddComponent<MeshComponent>(entity.GetComponent<MeshComponent>());
 
         return newEntity;
     }
@@ -543,6 +573,26 @@ namespace Himii
         }
 
         Renderer2D::EndScene();
+
+        // Draw Meshes
+        {
+            Renderer3D::BeginScene(camera);
+
+            if (m_SkyboxTexture)
+                Renderer3D::DrawSkybox(m_SkyboxTexture, camera);
+
+            Renderer3D::DrawGrid(camera);
+
+            auto view = m_Registry.view<TransformComponent, MeshComponent>();
+            view.each([&](entt::entity entity, TransformComponent &transform, MeshComponent &mesh)
+            {
+                if (mesh.Type == MeshComponent::MeshType::Cube)
+                    Renderer3D::DrawCube(transform.GetTransform(), mesh.Color, (int)entity);
+                else if (mesh.Type == MeshComponent::MeshType::Plane)
+                    Renderer3D::DrawPlane(transform.GetTransform(), mesh.Color, (int)entity);
+            });
+            Renderer3D::EndScene();
+        }
     }
 
     //
@@ -611,6 +661,11 @@ namespace Himii
 
     template<>
     void Scene::OnComponentAdded<SpriteAnimationComponent>(Entity entity, SpriteAnimationComponent &component)
+    {
+    }
+
+    template<>
+    void Scene::OnComponentAdded<MeshComponent>(Entity entity, MeshComponent &component)
     {
     }
 

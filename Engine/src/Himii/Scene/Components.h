@@ -7,7 +7,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#ifndef GLM_ENABLE_EXPERIMENTAL
 #define GLM_ENABLE_EXPERIMENTAL
+#endif
 #include <glm/gtx/quaternion.hpp>
 
 
@@ -79,6 +81,22 @@ namespace Himii
 
         CircleRendererComponent() = default;
         CircleRendererComponent(const CircleRendererComponent &) = default;
+    };
+
+    struct MeshComponent {
+        enum class MeshType
+        {
+            Cube = 0,
+            Plane = 1,
+            Sphere = 2,
+            Capsule = 3
+        };
+        
+        MeshType Type = MeshType::Cube;
+        glm::vec4 Color{1.0f, 1.0f, 1.0f, 1.0f};
+
+        MeshComponent() = default;
+        MeshComponent(const MeshComponent&) = default;
     };
 
     struct ScriptComponent {

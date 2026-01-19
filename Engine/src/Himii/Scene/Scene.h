@@ -6,6 +6,8 @@
 #include "Himii/Core/Timestep.h"
 #include "Himii/Core/UUID.h"
 #include "Himii/Renderer/EditorCamera.h"
+#include "Himii/Scene/SceneCamera.h"
+#include "Himii/Renderer/Texture.h"
 
 #include "box2d/box2d.h"
 
@@ -65,6 +67,15 @@ namespace Himii
         {
             return m_Registry.view<Components...>();
         }
+
+        void SetSkybox(const Ref<TextureCube> &skybox)
+        {
+            m_SkyboxTexture = skybox;
+        }
+        Ref<TextureCube> GetSkybox() const
+        {
+            return m_SkyboxTexture;
+        }
     private:
         template<typename T>
         void OnComponentAdded(Entity entity, T &component);
@@ -83,6 +94,8 @@ namespace Himii
         friend class Entity;
         friend class SceneSerializer;
         friend class SceneHierarchyPanel;
+
+        Ref<TextureCube> m_SkyboxTexture;
 
         b2WorldId m_Box2DWorld;
     };

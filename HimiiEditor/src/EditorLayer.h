@@ -94,7 +94,7 @@ namespace Himii
         bool m_ShowAnimationPanel = false;
 
         Ref<Texture2D> m_IconPlay, m_IconStop, m_IconSimulate;
-
+        Ref<TextureCube> m_SkyboxTexture;
 
         SceneState m_SceneState = SceneState::Edit;
         std::string m_Clipboard;

@@ -197,6 +197,15 @@ namespace Himii
             out << YAML::Key << "Fade" << YAML::Value << circleRenderer.Fade;
             out << YAML::EndMap;
         }
+        if (entity.HasComponent<MeshComponent>())
+        {
+            out << YAML::Key << "MeshComponent";
+            out << YAML::BeginMap;
+            auto& mesh = entity.GetComponent<MeshComponent>();
+            out << YAML::Key << "Type" << YAML::Value << (int)mesh.Type;
+            out << YAML::Key << "Color" << YAML::Value << mesh.Color;
+            out << YAML::EndMap;
+        }
         if (entity.HasComponent<Rigidbody2DComponent>())
         {
             out << YAML::Key << "Rigidbody2DComponent";
@@ -373,6 +382,15 @@ namespace Himii
             crc.Color = circleRendererComponent["Color"].as<glm::vec4>();
             crc.Thickness = circleRendererComponent["Thickness"].as<float>();
             crc.Fade = circleRendererComponent["Fade"].as<float>();
+        }
+
+        auto meshComponent = entity["MeshComponent"];
+        if (meshComponent)
+        {
+            auto& mc = deserializedEntity.AddComponent<MeshComponent>();
+            mc.Color = meshComponent["Color"].as<glm::vec4>();
+            if (meshComponent["Type"])
+                mc.Type = (MeshComponent::MeshType)meshComponent["Type"].as<int>();
         }
 
         auto rigidbody2DComponent = entity["Rigidbody2DComponent"];

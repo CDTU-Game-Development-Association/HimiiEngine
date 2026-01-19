@@ -30,6 +30,11 @@ namespace Himii
             s_RendererAPI->DrawIndexed(vertexArray,indexCount);
         }
 
+        inline static void DrawArrays(const Ref<VertexArray>& vertexArray, uint32_t vertexCount = 0)
+        {
+            s_RendererAPI->DrawArrays(vertexArray, vertexCount);
+        }
+
         inline static void DrawLines(const Ref<VertexArray> &vertexArray, uint32_t indexCount = 0)
         {
             s_RendererAPI->DrawLines(vertexArray, indexCount);
@@ -40,8 +45,27 @@ namespace Himii
             s_RendererAPI->SetLineWidth(width);
         }
 
+        inline static void SetDepthTest(bool enabled)
+        {
+            s_RendererAPI->SetDepthTest(enabled);
+        }
+        
+        inline static void SetDepthMask(bool enabled)
+        {
+            s_RendererAPI->SetDepthMask(enabled);
+        }
+
+        inline static void SetDepthFunc(RendererAPI::DepthComp func)
+        {
+            s_RendererAPI->SetDepthFunc(func);
+        }
+
+        inline static void SetCullMode(RendererAPI::CullMode mode)
+        {
+            s_RendererAPI->SetCullMode(mode);
+        }
+
     private:
-        //inline static Scope<RendererAPI> s_RendererAPI = RendererAPI::Create();
         static Scope<RendererAPI> s_RendererAPI;
     };
 
