@@ -126,4 +126,30 @@ namespace Himii {
 
 		return filePath;
 	}
+
+    // 新增的 OpenFolder 实现
+	std::string FileDialog::OpenFolder(const char* initialPath)
+	{
+		NFD_Init();
+
+		nfdchar_t* outPath = nullptr;
+		nfdresult_t result = NFD_PickFolder(&outPath, initialPath);
+
+		std::string folderPath;
+		if (result == NFD_OKAY)
+		{
+			folderPath = outPath;
+			NFD_FreePath(outPath);
+		}
+		else if (result == NFD_CANCEL)
+		{
+			// 用户取消
+		}
+		else
+		{
+			HIMII_CORE_ERROR("NFD Error: {0}", NFD_GetError());
+		}
+
+		return folderPath;
+	}
 }
