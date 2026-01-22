@@ -2,7 +2,7 @@
 #include "Himii/Core/Application.h"
 #include "Himii/Renderer/Renderer.h"
 #include <GLFW/glfw3.h>
-
+#include <unistd.h>
 
 #include "Himii/Scripting/ScriptEngine.h"
 

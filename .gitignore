@@ -118,3 +118,5 @@ Generated Files/
 vcpkg_installed/
 Hazelnut/assets/cache
 site/
+
+Test/
