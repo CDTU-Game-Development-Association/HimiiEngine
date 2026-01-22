@@ -6,7 +6,8 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <misc/cpp/imgui_stdlib.h>
-#include "filesystem"
+#include <filesystem>
+#include <sstream>
 
 #include <glm/gtc/type_ptr.hpp>
 
@@ -489,45 +490,174 @@ namespace Himii
                 "Script", entity, m_ComponentIcons["Script"],
                 [entity, scene = m_Context](auto &component) mutable
                 {
-                    bool scriptClassExists = ScriptEngine::EntityClassExists(component.ClassName);
+                    //bool scriptClassExists = ScriptEngine::EntityClassExists(component.ClassName);
 
                     ImGui::Text("Class Name");
                     ImGui::SameLine();
 
-                    if (ImGui::InputText("##ClassName", &component.ClassName))
+                    char buffer[256];
+                    memset(buffer, 0, sizeof(buffer));
+                    strcpy_s(buffer, sizeof(buffer), component.ClassName.c_str());
+
+                    bool isEdited = ImGui::InputText("##ClassName", buffer, sizeof(buffer));
+                    if (isEdited)
                     {
-                        // 输入修改逻辑
+                        component.ClassName = buffer;
                     }
 
-                    if (!scriptClassExists)
+                    bool scriptClassExists = false;
+                    if (!component.ClassName.empty())
                     {
-                        ImGui::TextColored(ImVec4(0.9f, 0.2f, 0.2f, 1.0f), "Invalid Script Class!");
+                        scriptClassExists = ScriptEngine::EntityClassExists(component.ClassName);
                     }
-                    else
+
+                    // 4. 根据查询结果绘制 UI
+                    if (!scriptClassExists && !component.ClassName.empty())
                     {
-                        // --- 新增：打开 IDE 逻辑 ---
+                        // 只有当不是正在输入时，才显示红色警告（可选优化）
+                        if (!ImGui::IsItemActive())
+                            ImGui::TextColored(ImVec4(0.9f, 0.2f, 0.2f, 1.0f), "Invalid Script Class!");
+                    }
+                    else if (scriptClassExists)
+                    {
+                        // --- Edit Button ---
                         ImGui::SameLine();
                         if (ImGui::Button("Edit"))
                         {
-                            // 1. 获取当前激活的项目
                             if (auto project = Project::GetActive())
                             {
                                 auto projectDir = Project::GetProjectDirectory();
-                                // ... (文件名解析代码) ...
                                 std::filesystem::path scriptPath =
                                         projectDir / "assets" / "scripts" / (component.ClassName + ".cs");
 
                                 if (std::filesystem::exists(scriptPath))
                                 {
-                                    // VS Code 技巧：
-                                    // "code folder file" 会打开文件夹并在其中打开文件
-
-                                    // 组合命令：code "E:/Project/Sandbox" "E:/Project/Sandbox/assets/scripts/Player.cs"
                                     std::string cmd =
                                             "code \"" + projectDir.string() + "\" \"" + scriptPath.string() + "\"";
                                     system(cmd.c_str());
                                 }
                             }
+                        }
+
+                        if (!isEdited)
+                        {
+                             // Get fields from ScriptEngine (Populates ScriptComponent::Fields)
+                             auto& fields = ScriptEngine::GetScriptFieldMap(entity);
+                             
+                             for (auto& [name, field] : fields)
+                             {
+                                 // Float
+                                 if (field.Type == ScriptFieldType::Float)
+                                 {
+                                     float data = field.GetValue<float>();
+                                     // Use DrawFloatControl for consistency
+                                     // Note: DrawFloatControl takes float&, so we pass local var and update field on change
+                                     // But DrawFloatControl already does ImGui internally.
+                                     // We need to know IF it changed. DrawFloatControl doesn't return bool (void).
+                                     // Let's modify DrawFloatControl or just check change manually?
+                                     // Looking at DrawFloatControl: it takes float& value. It modifies it inside.
+                                     // So we pass data, then check if data != field.GetValue().
+                                     
+                                     float oldData = data;
+                                     DrawFloatControl(name, data);
+                                     if (data != oldData)
+                                     {
+                                         field.SetValue(data);
+                                         ScriptEngine::SetFloat(ScriptEngine::GetEntityScriptInstance(entity.GetUUID()), name, data);
+                                     }
+                                 }
+                                 // Int
+                                 else if (field.Type == ScriptFieldType::Int)
+                                 {
+                                     int data = field.GetValue<int>();
+                                     // No DrawIntControl, use generic ImGui or custom? 
+                                     // Let's us ImGui::DragInt matching style of DrawFloatControl as much as possible
+                                     ImGui::PushID(name.c_str());
+                                     if(ImGui::BeginTable("##IntControl", 2, ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchProp))
+                                     {
+                                         ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 140.0f);
+                                         ImGui::TableSetupColumn("Value");
+                                         ImGui::TableNextColumn();
+                                         ImGui::Text("%s", name.c_str());
+                                         ImGui::TableNextColumn();
+                                         ImGui::PushItemWidth(-1);
+                                         if (ImGui::DragInt("##Value", &data))
+                                         {
+                                             field.SetValue(data);
+                                             ScriptEngine::SetInt(ScriptEngine::GetEntityScriptInstance(entity.GetUUID()), name, data);
+                                         }
+                                         ImGui::PopItemWidth();
+                                         ImGui::EndTable();
+                                     }
+                                     ImGui::PopID();
+                                 }
+                                 // Bool
+                                 else if (field.Type == ScriptFieldType::Bool)
+                                 {
+                                     bool data = field.GetValue<bool>();
+                                     bool oldData = data;
+                                     DrawCheckboxControl(name, data);
+                                     if (data != oldData)
+                                     {
+                                         field.SetValue(data);
+                                         ScriptEngine::SetBool(ScriptEngine::GetEntityScriptInstance(entity.GetUUID()), name, data);
+                                     }
+                                 }
+                                 // Vector2
+                                 else if (field.Type == ScriptFieldType::Vector2)
+                                 {
+                                     glm::vec2 data = field.GetValue<glm::vec2>();
+                                     glm::vec2 oldData = data;
+                                     // No DrawVec2Control? We can use DrawVec3Control and ignore Z or implement simplified
+                                     // Or just ImGui::DragFloat2
+                                     ImGui::PushID(name.c_str());
+                                     if(ImGui::BeginTable("##Vec2Control", 2, ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchProp))
+                                     {
+                                         ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 140.0f);
+                                         ImGui::TableSetupColumn("Value");
+                                         ImGui::TableNextColumn();
+                                         ImGui::Text("%s", name.c_str());
+                                         ImGui::TableNextColumn();
+                                         ImGui::PushItemWidth(-1);
+                                         if (ImGui::DragFloat2("##Value", glm::value_ptr(data), 0.1f))
+                                         {
+                                             field.SetValue(data);
+                                             ScriptEngine::SetVector2(ScriptEngine::GetEntityScriptInstance(entity.GetUUID()), name, data);
+                                         }
+                                         ImGui::PopItemWidth();
+                                         ImGui::EndTable();
+                                     }
+                                     ImGui::PopID();
+                                 }
+                                 // Vector3
+                                 else if (field.Type == ScriptFieldType::Vector3)
+                                 {
+                                     glm::vec3 data = field.GetValue<glm::vec3>();
+                                     glm::vec3 oldData = data;
+                                     DrawVec3Control(name, data);
+                                     if (data != oldData)
+                                     {
+                                         field.SetValue(data);
+                                         ScriptEngine::SetVector3(ScriptEngine::GetEntityScriptInstance(entity.GetUUID()), name, data);
+                                     }
+                                 }
+                                 // Vector4
+                                 else if (field.Type == ScriptFieldType::Vector4)
+                                 {
+                                     glm::vec4 data = field.GetValue<glm::vec4>();
+                                     glm::vec4 oldData = data;
+                                     DrawColorControl(name, data); // Assuming Vec4 is Color mostly? Or just numbers?
+                                     // If it's a color, DrawColorControl is good. If generic vector, maybe DragFloat4.
+                                     // Let's assume generic vector for now since Color is specific?
+                                     // But DrawColorControl is generic enough.
+                                     // Let's check matching.
+                                     if (data != oldData)
+                                     {
+                                         field.SetValue(data);
+                                         ScriptEngine::SetVector4(ScriptEngine::GetEntityScriptInstance(entity.GetUUID()), name, data);
+                                     }
+                                 }
+                             }
                         }
                     }
                 });

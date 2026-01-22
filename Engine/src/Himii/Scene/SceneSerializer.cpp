@@ -4,6 +4,7 @@
 #include "Himii/Scene/Entity.h"
 #include "Himii/Scene/Components.h"
 #include "Himii/Core/UUID.h"
+#include "Himii/Scripting/ScriptEngine.h"
 
 #include <fstream>
 
@@ -173,6 +174,42 @@ namespace Himii
 
             auto &sc = entity.GetComponent<ScriptComponent>();
             out << YAML::Key << "ClassName" << YAML::Value << sc.ClassName;
+
+            // Fields
+            auto& fields = sc.Fields;
+            if (!fields.empty())
+            {
+                out << YAML::Key << "ScriptFields" << YAML::Value << YAML::BeginSeq;
+                for (const auto& [name, field] : fields)
+                {
+                    out << YAML::BeginMap;
+                    out << YAML::Key << "Name" << YAML::Value << name;
+                    out << YAML::Key << "Type" << YAML::Value << (int)field.Type;
+                    out << YAML::Key << "Data" << YAML::Value;
+
+                    switch (field.Type)
+                    {
+                        case ScriptFieldType::Float: out << field.GetValue<float>(); break;
+                        case ScriptFieldType::Double: out << field.GetValue<double>(); break;
+                        case ScriptFieldType::Bool: out << field.GetValue<bool>(); break;
+                        case ScriptFieldType::Char: out << field.GetValue<char>(); break;
+                        case ScriptFieldType::Byte: out << field.GetValue<unsigned char>(); break;
+                        case ScriptFieldType::Short: out << field.GetValue<short>(); break;
+                        case ScriptFieldType::Int: out << field.GetValue<int>(); break;
+                        case ScriptFieldType::Long: out << field.GetValue<long long>(); break;
+                        case ScriptFieldType::UByte: out << field.GetValue<unsigned char>(); break;
+                        case ScriptFieldType::UShort: out << field.GetValue<unsigned short>(); break;
+                        case ScriptFieldType::UInt: out << field.GetValue<unsigned int>(); break;
+                        case ScriptFieldType::ULong: out << field.GetValue<unsigned long long>(); break;
+                        case ScriptFieldType::Vector2: out << field.GetValue<glm::vec2>(); break;
+                        case ScriptFieldType::Vector3: out << field.GetValue<glm::vec3>(); break;
+                        case ScriptFieldType::Vector4: out << field.GetValue<glm::vec4>(); break;
+                        case ScriptFieldType::Entity: out << field.GetValue<UUID>(); break;
+                    }
+                    out << YAML::EndMap;
+                }
+                out << YAML::EndSeq;
+            }
 
             out << YAML::EndMap; // ScriptComponent
         }
@@ -356,6 +393,41 @@ namespace Himii
         {
             auto &sc = deserializedEntity.AddComponent<ScriptComponent>();
             sc.ClassName = scriptComponent["ClassName"].as<std::string>();
+
+            auto scriptFields = scriptComponent["ScriptFields"];
+            if (scriptFields)
+            {
+                auto& fieldMap = sc.Fields;
+                for (auto scriptField : scriptFields)
+                {
+                    std::string name = scriptField["Name"].as<std::string>();
+                    ScriptFieldType type = (ScriptFieldType)scriptField["Type"].as<int>();
+
+                    ScriptFieldInstance fieldInstance;
+                    fieldInstance.Type = type;
+
+                    switch (type)
+                    {
+                        case ScriptFieldType::Float: fieldInstance.SetValue(scriptField["Data"].as<float>()); break;
+                        case ScriptFieldType::Double: fieldInstance.SetValue(scriptField["Data"].as<double>()); break;
+                        case ScriptFieldType::Bool: fieldInstance.SetValue(scriptField["Data"].as<bool>()); break;
+                        case ScriptFieldType::Char: fieldInstance.SetValue(scriptField["Data"].as<char>()); break;
+                        case ScriptFieldType::Byte: fieldInstance.SetValue(scriptField["Data"].as<unsigned char>()); break;
+                        case ScriptFieldType::Short: fieldInstance.SetValue(scriptField["Data"].as<short>()); break;
+                        case ScriptFieldType::Int: fieldInstance.SetValue(scriptField["Data"].as<int>()); break;
+                        case ScriptFieldType::Long: fieldInstance.SetValue(scriptField["Data"].as<long long>()); break;
+                        case ScriptFieldType::UByte: fieldInstance.SetValue(scriptField["Data"].as<unsigned char>()); break;
+                        case ScriptFieldType::UShort: fieldInstance.SetValue(scriptField["Data"].as<unsigned short>()); break;
+                        case ScriptFieldType::UInt: fieldInstance.SetValue(scriptField["Data"].as<unsigned int>()); break;
+                        case ScriptFieldType::ULong: fieldInstance.SetValue(scriptField["Data"].as<unsigned long long>()); break;
+                        case ScriptFieldType::Vector2: fieldInstance.SetValue(scriptField["Data"].as<glm::vec2>()); break;
+                        case ScriptFieldType::Vector3: fieldInstance.SetValue(scriptField["Data"].as<glm::vec3>()); break;
+                        case ScriptFieldType::Vector4: fieldInstance.SetValue(scriptField["Data"].as<glm::vec4>()); break;
+                        case ScriptFieldType::Entity: fieldInstance.SetValue(scriptField["Data"].as<UUID>()); break;
+                    }
+                    fieldMap[name] = fieldInstance;
+                }
+            }
         }
 
         auto spriteRendererComponent = entity["SpriteRendererComponent"];

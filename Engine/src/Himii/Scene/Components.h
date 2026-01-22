@@ -2,6 +2,7 @@
 #include "SceneCamera.h"
 #include "Himii/Core/UUID.h"
 #include "Himii/Renderer/Texture.h"
+#include "Himii/Scripting/ScriptEngine.h"
 //#include "Himii/Renderer/Font.h"
 
 #include <glm/glm.hpp>
@@ -101,6 +102,8 @@ namespace Himii
 
     struct ScriptComponent {
         std::string ClassName;
+
+        ScriptFieldMap Fields;
 
         ScriptComponent() = default;
         ScriptComponent(const ScriptComponent &) = default;
