@@ -57,6 +57,13 @@ namespace Himii
         glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_INT, nullptr);
     }
 
+    void OpenGLRendererAPI::DrawIndexedInstanced(const Ref<VertexArray> &vertexArray, uint32_t indexCount, uint32_t instanceCount)
+    {
+        vertexArray->Bind();
+        uint32_t count = indexCount ? indexCount : vertexArray->GetIndexBuffer()->GetCount();
+        glDrawElementsInstanced(GL_TRIANGLES, count, GL_UNSIGNED_INT, nullptr, instanceCount);
+    }
+
     void OpenGLRendererAPI::DrawArrays(const Ref<VertexArray> &vertexArray, uint32_t vertexCount)
     {
         vertexArray->Bind();

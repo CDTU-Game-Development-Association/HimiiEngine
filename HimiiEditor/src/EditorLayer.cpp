@@ -286,6 +286,14 @@ namespace Himii
             ImGui::Text("Quad Count: %d", stats.QuadCount);
             ImGui::Text("Vertex Count: %d", stats.GetTotalVertexCount());
             ImGui::Text("Index Count: %d", stats.GetTotalIndexCount());
+
+            ImGui::Separator();
+            auto stats3D = Himii::Renderer3D::GetStatistics();
+            ImGui::Text("Renderer3D Stats:");
+            ImGui::Text("Draw Calls: %d", stats3D.DrawCalls);
+            ImGui::Text("Vertex Count: %d", stats3D.GetTotalVertexCount());
+            ImGui::Text("Index Count: %d", stats3D.GetTotalIndexCount());
+            ImGui::Text("Face Count: %d", stats3D.GetTotalIndexCount() / 3);
             ImGui::End();
 
             ImGui::Begin("Settings");

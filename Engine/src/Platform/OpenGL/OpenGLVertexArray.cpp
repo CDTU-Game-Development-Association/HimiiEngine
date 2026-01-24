@@ -85,6 +85,8 @@ namespace Himii
                                           ShaderDataTypeToOpenGLBaseType(element.Type),
                                           element.Normalized ? GL_TRUE : GL_FALSE, layout.GetStride(),
                                           (const void *)element.Offset);
+                    if (element.Instanced)
+                        glVertexAttribDivisor(m_VertexBufferIndex, 1);
                     m_VertexBufferIndex++;
                     break;
                 }
@@ -98,6 +100,8 @@ namespace Himii
                     glVertexAttribIPointer(m_VertexBufferIndex, element.GetComponentCount(),
                                            ShaderDataTypeToOpenGLBaseType(element.Type), layout.GetStride(),
                                            (const void *)element.Offset);
+                    if (element.Instanced)
+                        glVertexAttribDivisor(m_VertexBufferIndex, 1);
                     m_VertexBufferIndex++;
                     break;
                 }

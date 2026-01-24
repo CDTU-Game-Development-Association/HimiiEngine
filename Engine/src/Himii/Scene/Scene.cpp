@@ -274,6 +274,10 @@ namespace Himii
                          Renderer3D::DrawCube(transform.GetTransform(), mesh.Color, (int)entity);
                      else if (mesh.Type == MeshComponent::MeshType::Plane)
                          Renderer3D::DrawPlane(transform.GetTransform(), mesh.Color, (int)entity);
+                     else if (mesh.Type == MeshComponent::MeshType::Sphere)
+                         Renderer3D::DrawSphere(transform.GetTransform(), mesh.Color, (int)entity);
+                     else if (mesh.Type == MeshComponent::MeshType::Capsule)
+                         Renderer3D::DrawCapsule(transform.GetTransform(), mesh.Color, (int)entity);
                  });
                  Renderer3D::EndScene();
              }
@@ -590,6 +594,10 @@ namespace Himii
                     Renderer3D::DrawCube(transform.GetTransform(), mesh.Color, (int)entity);
                 else if (mesh.Type == MeshComponent::MeshType::Plane)
                     Renderer3D::DrawPlane(transform.GetTransform(), mesh.Color, (int)entity);
+                else if (mesh.Type == MeshComponent::MeshType::Sphere)
+                    Renderer3D::DrawSphere(transform.GetTransform(), mesh.Color, (int)entity);
+                else if (mesh.Type == MeshComponent::MeshType::Capsule)
+                    Renderer3D::DrawCapsule(transform.GetTransform(), mesh.Color, (int)entity);
             });
             Renderer3D::EndScene();
         }

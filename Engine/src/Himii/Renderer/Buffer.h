@@ -48,11 +48,12 @@ namespace Himii
         uint32_t Offset;
         size_t Size;
         bool Normalized;
+        bool Instanced;
 
         BufferElement()=default;
 
-        BufferElement(ShaderDataType type, const std::string &name,bool bormalized=false ) :
-            Name(name), Type(type), Size(ShaderDataTypeSize(type)), Offset(0), Normalized(false)
+        BufferElement(ShaderDataType type, const std::string &name, bool normalized = false, bool instanced = false)
+            : Name(name), Type(type), Size(ShaderDataTypeSize(type)), Offset(0), Normalized(normalized), Instanced(instanced)
         {
         }
 

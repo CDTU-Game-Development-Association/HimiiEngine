@@ -1,31 +1,45 @@
 #type vertex
 #version 450 core
-layout(location = 0) in vec4 a_Color;
-layout(location = 1) in vec3 a_Position;
-layout(location = 2) in vec3 a_Normal;
-layout(location = 3) in int a_EntityID;
+// Per-Vertex Attributes
+layout(location = 0) in vec3 a_Position;
+layout(location = 1) in vec3 a_Normal;
+layout(location = 2) in vec2 a_TexCoord;
+
+// Per-Instance Attributes
+layout(location = 3) in vec4 a_Color;
+layout(location = 4) in vec4 a_CustomData; // .x = TexIndex, .y = EntityID
+layout(location = 5) in mat4 a_Transform; // Occupies 5, 6, 7, 8
 
 layout(std140, binding = 0) uniform Camera
 {
 	mat4 u_ViewProjection;
 };
 
-// 定义输出结构体
 struct VertexOutput
 {
 	vec4 Color;
     vec3 Normal;
+    vec2 TexCoord;
 };
 
-layout (location = 0) out VertexOutput v_Output; // 实例名改为 v_Output
-layout (location = 3) out flat int v_EntityID;
+layout (location = 0) out VertexOutput v_Output;
+layout (location = 3) out flat float v_TexIndex;
+layout (location = 4) out flat int v_EntityID;
 
 void main()
 {
 	v_Output.Color = a_Color;
-    v_Output.Normal = a_Normal;
-	v_EntityID = a_EntityID;
-	gl_Position = u_ViewProjection * vec4(a_Position, 1.0);
+    v_Output.TexCoord = a_TexCoord;
+    v_TexIndex = a_CustomData.x;
+	v_EntityID = int(a_CustomData.y);
+    
+    // Transform Position
+    vec4 worldPosition = a_Transform * vec4(a_Position, 1.0);
+    gl_Position = u_ViewProjection * worldPosition;
+    
+    // Transform Normal
+    mat3 normalMatrix = transpose(inverse(mat3(a_Transform)));
+    v_Output.Normal = normalize(normalMatrix * a_Normal);
 }
 
 #type fragment
@@ -37,26 +51,44 @@ struct VertexOutput
 {
 	vec4 Color;
     vec3 Normal;
+    vec2 TexCoord;
 };
 
-// 这里的输入实例名必须也是 v_Output，与顶点着色器保持一致！
-layout (location = 0) in VertexOutput v_Output; 
-layout (location = 3) in flat int v_EntityID;
+layout (location = 0) in VertexOutput v_Output;
+layout (location = 3) in flat float v_TexIndex;
+layout (location = 4) in flat int v_EntityID;
+
+layout(binding = 0) uniform sampler2D u_Textures[32];
 
 void main()
 {
-    // Basic Light
-    vec3 lightDir = normalize(vec3(-0.5, -1.0, -0.3));
-    vec3 normal = normalize(v_Output.Normal); // 使用 v_Output
+    vec3 normal = normalize(v_Output.Normal);
 
-    // Diffuse
+
+
+    vec3 lightDir = normalize(vec3(-0.5, -1.0, -0.3));
+
     float diff = max(dot(normal, -lightDir), 0.0);
 
-    // Ambient
-    float ambient = 0.3;
+    float ambient = 0.15;
 
-    vec3 lighting = (ambient + diff) * vec3(1.0);
+    float specular = 0.0;
+    if(diff > 0.0) {
+        vec3 viewDir = normalize(vec3(0.0, 0.0, 1.0));
+        vec3 halfwayDir = normalize(-lightDir + viewDir);
+        specular = pow(max(dot(normal, halfwayDir), 0.0), 32.0) * 0.5;
+    }
 
-	o_Color = vec4(lighting, 1.0) * v_Output.Color; // 使用 v_Output
+    vec3 lighting = (ambient + diff + specular) * vec3(1.0);
+
+    vec4 texColor = v_Output.Color;
+    
+    if (v_TexIndex > 0.0)
+    {
+        int index = int(v_TexIndex);
+        texColor *= texture(u_Textures[index], v_Output.TexCoord);
+    }
+
+	o_Color = vec4(lighting, 1.0) * texColor;
 	o_EntityID = v_EntityID;
 }

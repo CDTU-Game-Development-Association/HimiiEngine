@@ -59,6 +59,21 @@ namespace Himii
             {
                 m_Context->CreateEntity("Empty Entity");
             }
+            if (ImGui::MenuItem("Create Cube"))
+            {
+                auto entity = m_Context->CreateEntity("Cube");
+                entity.AddComponent<MeshComponent>().Type = MeshComponent::MeshType::Cube;
+            }
+            if (ImGui::MenuItem("Create Sphere"))
+            {
+                auto entity = m_Context->CreateEntity("Sphere");
+                entity.AddComponent<MeshComponent>().Type = MeshComponent::MeshType::Sphere;
+            }
+            if (ImGui::MenuItem("Create Capsule"))
+            {
+                auto entity = m_Context->CreateEntity("Capsule");
+                entity.AddComponent<MeshComponent>().Type = MeshComponent::MeshType::Capsule;
+            }
             ImGui::EndPopup();
         }
         ImGui::End();
@@ -705,6 +720,25 @@ namespace Himii
                  "Mesh Renderer", entity, m_ComponentIcons["Mesh Renderer"],
                  [](auto &component)
                  {
+                     const char* meshTypeStrings[] = { "Cube", "Plane", "Sphere", "Capsule" };
+                     const char* currentMeshTypeString = meshTypeStrings[(int)component.Type];
+                     
+                     if (ImGui::BeginCombo("Mesh Type", currentMeshTypeString))
+                     {
+                         for (int i = 0; i < 4; i++)
+                         {
+                             bool isSelected = (currentMeshTypeString == meshTypeStrings[i]);
+                             if (ImGui::Selectable(meshTypeStrings[i], isSelected))
+                             {
+                                 currentMeshTypeString = meshTypeStrings[i];
+                                 component.Type = (MeshComponent::MeshType)i;
+                             }
+                             if (isSelected)
+                                 ImGui::SetItemDefaultFocus();
+                         }
+                         ImGui::EndCombo();
+                     }
+
                      DrawColorControl("Color", component.Color);
                  });
 

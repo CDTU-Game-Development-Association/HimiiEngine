@@ -20,6 +20,13 @@ namespace Himii {
         // Primitives
         static void DrawCube(const glm::vec3& position, const glm::vec3& size, const glm::vec4& color, int entityID = -1);
         static void DrawCube(const glm::mat4& transform, const glm::vec4& color, int entityID = -1);
+
+        static void DrawSphere(const glm::vec3& position, float radius, const glm::vec4& color, int entityID = -1);
+        static void DrawSphere(const glm::mat4& transform, const glm::vec4& color, int entityID = -1);
+
+        static void DrawCapsule(const glm::vec3& position, float radius, float height, const glm::vec4& color, int entityID = -1);
+        static void DrawCapsule(const glm::mat4& transform, const glm::vec4& color, int entityID = -1);
+
         static void DrawPlane(const glm::mat4& transform, const glm::vec4& color, int entityID = -1);
 
         // Skybox
@@ -35,9 +42,15 @@ namespace Himii {
         {
             uint32_t DrawCalls = 0;
             uint32_t CubeCount = 0;
+            uint32_t QuadCount = 0;
+            uint32_t SphereCount = 0;
+            uint32_t CapsuleCount = 0;
+            
+            uint32_t TotalVertexCount = 0;
+            uint32_t TotalIndexCount = 0;
 
-            uint32_t GetTotalVertexCount() const { return CubeCount * 24; } // 4 verts * 6 faces
-            uint32_t GetTotalIndexCount() const { return CubeCount * 36; }  // 6 indices * 6 faces
+            uint32_t GetTotalVertexCount() const { return TotalVertexCount; }
+            uint32_t GetTotalIndexCount() const { return TotalIndexCount; }
         };
 
         static void ResetStats();
