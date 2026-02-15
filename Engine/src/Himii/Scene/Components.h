@@ -12,6 +12,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #endif
 #include <glm/gtx/quaternion.hpp>
+#include <vector>
 
 
 namespace Himii
@@ -186,5 +187,13 @@ namespace Himii
 
         SpriteAnimationComponent() = default;
         SpriteAnimationComponent(const SpriteAnimationComponent &) = default;
+    };
+
+    struct TilemapComponent {
+        // 引用外部 TileMapData 资源（包含 TileSet 引用 + 地图数据）
+        AssetHandle TileMapHandle = 0;
+
+        TilemapComponent() = default;
+        TilemapComponent(const TilemapComponent&) = default;
     };
 }

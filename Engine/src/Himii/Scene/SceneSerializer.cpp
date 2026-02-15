@@ -288,6 +288,14 @@ namespace Himii
             out << YAML::Key << "Playing" << YAML::Value << anim.Playing;
             out << YAML::EndMap;
         }
+        if (entity.HasComponent<TilemapComponent>())
+        {
+            out << YAML::Key << "TilemapComponent";
+            out << YAML::BeginMap;
+            auto &tm = entity.GetComponent<TilemapComponent>();
+            out << YAML::Key << "TileMapHandle" << YAML::Value << (uint64_t)tm.TileMapHandle;
+            out << YAML::EndMap;
+        }
         out << YAML::EndMap;
     }
 
@@ -503,6 +511,14 @@ namespace Himii
                 sac.FrameRate = spriteAnimationComponent["FrameRate"].as<float>();
             if (spriteAnimationComponent["Playing"])
                 sac.Playing = spriteAnimationComponent["Playing"].as<bool>();
+        }
+
+        auto tilemapComponent = entity["TilemapComponent"];
+        if (tilemapComponent)
+        {
+            auto &tm = deserializedEntity.AddComponent<TilemapComponent>();
+            if (tilemapComponent["TileMapHandle"])
+                tm.TileMapHandle = tilemapComponent["TileMapHandle"].as<uint64_t>();
         }
     }
     

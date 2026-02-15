@@ -60,16 +60,21 @@ namespace Himii
         return speed;
     }
 
-    void EditorCamera::OnUpdate(Timestep ts, bool allowInput)
+    void EditorCamera::OnUpdate(Timestep ts, bool allowInput, bool is2D)
     {
         const glm::vec2 &mouse{Input::GetMouseX(), Input::GetMouseY()};
 
-        // Right Click for Look/Move, Middle Click for Zoom
+        // 3D Mode Inputs
         bool isRight = Input::IsMouseButtonPressed(Mouse::ButtonRight);
         bool isMiddle = Input::IsMouseButtonPressed(Mouse::ButtonMiddle);
 
+        // 2D Mode Inputs
+        // The user wants: "Only Scroll Zoom, Right Click Drag"
+        bool is2DPan = isRight; 
+
         bool isAnyMouseButtonPressed = isRight || isMiddle;
 
+        // Check Input Availability
         if (isAnyMouseButtonPressed)
         {
             if (!m_IsActive && allowInput)
@@ -85,37 +90,55 @@ namespace Himii
 
         if (m_IsActive)
         {
-            glm::vec2 delta = (mouse - m_InitialMousePosition) * 0.003f;
+            glm::vec2 delta = (mouse - m_InitialMousePosition) * 0.01f;
             m_InitialMousePosition = mouse;
-
-            if (isRight)
+            
+            if (is2D)
             {
-                MouseRotate(delta);
-
-                // WASD Movement (Classic Fly Mode)
-                glm::vec3 direction(0.0f);
-                if (Input::IsKeyPressed(Key::W))
-                    direction += GetForwardDirection();
-                if (Input::IsKeyPressed(Key::S))
-                    direction -= GetForwardDirection();
-                if (Input::IsKeyPressed(Key::A))
-                    direction -= GetRightDirection();
-                if (Input::IsKeyPressed(Key::D))
-                    direction += GetRightDirection();
-                if (Input::IsKeyPressed(Key::Q))
-                    direction -= GetUpDirection();
-                if (Input::IsKeyPressed(Key::E))
-                    direction += GetUpDirection();
-
-                if (glm::length(direction) > 0.0f)
-                    m_FocalPoint += direction * m_MoveSpeed * (float)ts;
-            }
-            else if (isMiddle)
-            {
-                if (Input::IsKeyPressed(Key::LeftShift))
-                    MouseZoom(delta.y);
-                else
+                // 2D Mode Logic
+                if (is2DPan)
+                {
                     MousePan(delta);
+                }
+                
+                if (m_Pitch != 0.0f || m_Yaw != 0.0f)
+                {
+                    m_Pitch = 0.0f;
+                    m_Yaw = 0.0f;
+                }
+            }
+            else
+            {
+                // 3D Mode Logic (Existing)
+                if (isRight)
+                {
+                    MouseRotate(delta);
+    
+                    // WASD Movement
+                    glm::vec3 direction(0.0f);
+                    if (Input::IsKeyPressed(Key::W))
+                        direction += GetForwardDirection();
+                    if (Input::IsKeyPressed(Key::S))
+                        direction -= GetForwardDirection();
+                    if (Input::IsKeyPressed(Key::A))
+                        direction -= GetRightDirection();
+                    if (Input::IsKeyPressed(Key::D))
+                        direction += GetRightDirection();
+                    if (Input::IsKeyPressed(Key::Q))
+                        direction -= GetUpDirection();
+                    if (Input::IsKeyPressed(Key::E))
+                        direction += GetUpDirection();
+    
+                    if (glm::length(direction) > 0.0f)
+                        m_FocalPoint += direction * m_MoveSpeed * (float)ts;
+                }
+                else if (isMiddle)
+                {
+                    if (Input::IsKeyPressed(Key::LeftShift))
+                        MouseZoom(delta.y);
+                    else
+                        MousePan(delta);
+                }
             }
         }
 

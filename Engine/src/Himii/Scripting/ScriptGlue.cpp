@@ -5,6 +5,9 @@
 #include "Himii/Scene/Entity.h"
 #include "Himii/Scene/Scene.h"
 #include "Himii/Scene/Components.h"
+#include "Himii/Scene/TileMapData.h"
+#include "Himii/Asset/AssetManager.h"
+#include "Himii/Project/Project.h"
 #include "Himii/Core/Input.h"
 #include "Himii/Core/KeyCodes.h"
 #include <iostream>
@@ -259,6 +262,79 @@ namespace Himii {
         }
     }
 
+    // 辅助：从实体的 TilemapComponent 获取 TileMapData 资源
+    static Ref<TileMapData> GetTileMapDataFromEntity(Entity entity)
+    {
+        if (!entity || !entity.HasComponent<TilemapComponent>()) return nullptr;
+        auto &tc = entity.GetComponent<TilemapComponent>();
+        if (tc.TileMapHandle == 0) return nullptr;
+
+        auto assetManager = Project::GetAssetManager();
+        if (!assetManager) return nullptr;
+
+        auto asset = assetManager->GetAsset(tc.TileMapHandle);
+        if (!asset) return nullptr;
+        return std::static_pointer_cast<TileMapData>(asset);
+    }
+
+    // Tilemap Internal Calls
+    static void Tilemap_GetSize(uint64_t entityID, uint32_t* outWidth, uint32_t* outHeight)
+    {
+        Scene *scene = ScriptEngine::GetSceneContext();
+        if (!scene) return;
+        Entity entity = scene->GetEntityByUUID(entityID);
+
+        auto mapData = GetTileMapDataFromEntity(entity);
+        if (!mapData) { *outWidth = 0; *outHeight = 0; return; }
+
+        *outWidth = mapData->GetWidth();
+        *outHeight = mapData->GetHeight();
+    }
+
+    static void Tilemap_SetSize(uint64_t entityID, uint32_t width, uint32_t height)
+    {
+        Scene *scene = ScriptEngine::GetSceneContext();
+        if (!scene) return;
+        Entity entity = scene->GetEntityByUUID(entityID);
+
+        auto mapData = GetTileMapDataFromEntity(entity);
+        if (!mapData) return;
+
+        mapData->Resize(width, height);
+    }
+
+    static uint16_t Tilemap_GetTile(uint64_t entityID, uint32_t x, uint32_t y)
+    {
+        Scene *scene = ScriptEngine::GetSceneContext();
+        if (!scene) return 0;
+        Entity entity = scene->GetEntityByUUID(entityID);
+
+        auto mapData = GetTileMapDataFromEntity(entity);
+        if (!mapData) return 0;
+
+        return mapData->GetTile(x, y);
+    }
+    
+    static void Tilemap_SetTile(uint64_t entityID, uint32_t x, uint32_t y, uint16_t tileID)
+    {
+        Scene *scene = ScriptEngine::GetSceneContext();
+        if (!scene) return;
+        Entity entity = scene->GetEntityByUUID(entityID);
+
+        auto mapData = GetTileMapDataFromEntity(entity);
+        if (!mapData) return;
+
+        mapData->SetTile(x, y, tileID);
+    }
+
+    static void Physics2D_Raycast(glm::vec2* start, glm::vec2* end, Scene::RaycastHit2D* outHit)
+    {
+         Scene *scene = ScriptEngine::GetSceneContext();
+         if (!scene) return;
+         
+         *outHit = scene->Raycast2D(*start, *end);
+    }
+
     ScriptEngineData ScriptGlue::GetNativeFunctions()
     {
         ScriptEngineData data;
@@ -290,6 +366,14 @@ namespace Himii {
         data.Rigidbody2D_ApplyLinearImpulseToCenter = (void *)&Rigidbody2D_ApplyLinearImpulseToCenter;
         data.Rigidbody2D_GetLinearVelocity = (void *)&Rigidbody2D_GetLinearVelocity;
         data.Rigidbody2D_SetLinearVelocity = (void *)&Rigidbody2D_SetLinearVelocity;
+
+        // Tilemap
+        data.Tilemap_GetSize = (void *)&Tilemap_GetSize;
+        data.Tilemap_SetSize = (void *)&Tilemap_SetSize;
+        data.Tilemap_GetTile = (void *)&Tilemap_GetTile;
+        data.Tilemap_SetTile = (void *)&Tilemap_SetTile;
+
+        data.Physics2D_Raycast = (void *)&Physics2D_Raycast;
 
         return data;
     }

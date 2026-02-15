@@ -132,8 +132,8 @@ namespace Himii
 
                 if (ImGui::BeginDragDropSource())
                 {
-                    const char* itemPath = relativePath.string().c_str();
-                    ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM", itemPath, (std::strlen(itemPath) + 1));
+                    std::wstring itemPath = relativePath.wstring();
+                    ImGui::SetDragDropPayload("CONTENT_BROWSER_ITEM", itemPath.c_str(), (itemPath.size() + 1) * sizeof(wchar_t));
                     ImGui::EndDragDropSource();
                 }
 

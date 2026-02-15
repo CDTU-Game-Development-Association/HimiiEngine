@@ -13,7 +13,9 @@ namespace Himii {
         None = 0,
         Scene,
         Texture2D,
-        SpriteAnimation
+        SpriteAnimation,
+        TileSet,
+        TileMap
     };
 
     class Asset {
@@ -28,28 +30,24 @@ namespace Himii {
         {
             switch (type)
             {
-                case AssetType::None:
-                    return "None";
-                case AssetType::Scene:
-                    return "Scene";
-                case AssetType::Texture2D:
-                    return "Texture2D";
-                case AssetType::SpriteAnimation:
-                    return "SpriteAnimation";
+                case AssetType::None:            return "None";
+                case AssetType::Scene:           return "Scene";
+                case AssetType::Texture2D:       return "Texture2D";
+                case AssetType::SpriteAnimation: return "SpriteAnimation";
+                case AssetType::TileSet:         return "TileSet";
+                case AssetType::TileMap:         return "TileMap";
             }
             return "None";
         }
 
         static AssetType AssetTypeFromString(const std::string &assetType)
         {
-            if (assetType == "None")
-                return AssetType::None;
-            if (assetType == "Scene")
-                return AssetType::Scene;
-            if (assetType == "Texture2D")
-                return AssetType::Texture2D;
-            if (assetType == "SpriteAnimation")
-                return AssetType::SpriteAnimation;
+            if (assetType == "None")            return AssetType::None;
+            if (assetType == "Scene")           return AssetType::Scene;
+            if (assetType == "Texture2D")       return AssetType::Texture2D;
+            if (assetType == "SpriteAnimation") return AssetType::SpriteAnimation;
+            if (assetType == "TileSet")         return AssetType::TileSet;
+            if (assetType == "TileMap")         return AssetType::TileMap;
 
             return AssetType::None;
         }

@@ -32,5 +32,25 @@ namespace Himii
 		public IntPtr Rigidbody2D_ApplyLinearImpulseToCenter;
         public IntPtr Rigidbody2D_GetLinearVelocity;
         public IntPtr Rigidbody2D_SetLinearVelocity;
+
+        // Tilemap
+        public IntPtr Tilemap_GetSize;
+        public IntPtr Tilemap_SetSize;
+        public IntPtr Tilemap_GetTile;
+        public IntPtr Tilemap_SetTile;
+
+        // Physics2D
+        public IntPtr Physics2D_Raycast;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RaycastHit2D
+    {
+        public Vector2 Point;
+        public Vector2 Normal;
+        public float Distance;
+        public ulong EntityID;
+        [MarshalAs(UnmanagedType.I1)]
+        public bool Hit;
     }
 }

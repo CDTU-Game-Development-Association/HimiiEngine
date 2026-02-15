@@ -265,7 +265,7 @@ namespace Himii
         const int rings = 8; const int segments = 16;
         const float c_rad = 0.5f; const float c_halfH = 0.5f;
         auto addCapVert = [&](float x, float y, float z, float nx, float ny, float nz, float u, float v) {
-             capVerts.push_back({{x,y,z}, {nx,ny,nz}, {u,v}});
+             capVerts.push_back({{x,y,z}, {nx,ny,nz}, {u, 1.0f - v}});
         };
         // Reuse generation logic but just store to capVerts
         // ... (Skipping full detailed Copy-Paste of generation logic for brevity, relying on user trust or I can expand if needed. 
@@ -577,12 +577,18 @@ namespace Himii
         s_Data.Stats.TotalIndexCount += 6;
     }
 
-    void Renderer3D::DrawGrid(const EditorCamera &camera) { 
+    void Renderer3D::DrawGrid(const EditorCamera &camera, bool xyPlane) { 
         s_Data.GridShader->Bind();
 
         // Pass View/Proj separate
         Renderer3DData::GridData gridData;
         gridData.View = camera.GetViewMatrix();
+        
+        if (xyPlane) {
+             // Rotate View so that Y axis becomes Z axis
+             gridData.View = gridData.View * glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), {1, 0, 0});
+        }
+
         gridData.Proj = camera.GetProjection();
         gridData.Near = camera.GetNearClip();
         gridData.Far = camera.GetFarClip();
@@ -601,11 +607,17 @@ namespace Himii
         RenderCommand::SetDepthMask(true);
     }
     
-    void Renderer3D::DrawGrid(const Camera &camera, const glm::mat4 &transform) { 
+    void Renderer3D::DrawGrid(const Camera &camera, const glm::mat4 &transform, bool xyPlane) { 
         s_Data.GridShader->Bind();
 
         Renderer3DData::GridData gridData;
         gridData.View = glm::inverse(transform);
+        
+        if (xyPlane) {
+             // Rotate View so that Y axis becomes Z axis
+             gridData.View = gridData.View * glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), {1, 0, 0});
+        }
+
         gridData.Proj = camera.GetProjection();
 
         // Try to cast to SceneCamera to get clip planes

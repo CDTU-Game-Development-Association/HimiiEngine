@@ -33,6 +33,15 @@ namespace Himii
         void *Rigidbody2D_ApplyLinearImpulseToCenter;
         void *Rigidbody2D_GetLinearVelocity;
         void *Rigidbody2D_SetLinearVelocity;
+
+        // Tilemap
+        void *Tilemap_GetSize;
+        void *Tilemap_SetSize;
+        void *Tilemap_GetTile;
+        void *Tilemap_SetTile;
+
+        // Physics2D
+        void *Physics2D_Raycast;
     };
 
     class ScriptGlue {

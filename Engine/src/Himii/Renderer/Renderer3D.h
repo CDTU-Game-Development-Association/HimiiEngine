@@ -34,8 +34,8 @@ namespace Himii {
         static void DrawSkybox(const Ref<TextureCube> &cubemap, const EditorCamera &camera);
         
         // Grid
-        static void DrawGrid(const EditorCamera& camera);
-        static void DrawGrid(const Camera& camera, const glm::mat4& transform);
+        static void DrawGrid(const EditorCamera& camera, bool xyPlane = false);
+        static void DrawGrid(const Camera& camera, const glm::mat4& transform, bool xyPlane = false);
 
         // Stats
         struct Statistics

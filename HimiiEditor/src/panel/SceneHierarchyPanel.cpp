@@ -2,6 +2,9 @@
 #include "Himii/Project/Project.h"
 
 #include "Himii/Scripting/ScriptEngine.h"
+#include "Himii/Scene/TileSet.h"
+#include "Himii/Scene/TileMapData.h"
+#include "Himii/Asset/AssetSerializer.h"
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -403,6 +406,7 @@ namespace Himii
             DisplayAddComponentEntry<CircleCollider2DComponent>("Circle Collider2D");
             DisplayAddComponentEntry<SpriteAnimationComponent>("Sprite Animation");
             DisplayAddComponentEntry<MeshComponent>("Mesh Renderer");
+            DisplayAddComponentEntry<TilemapComponent>("Tilemap");
 
             ImGui::EndPopup();
         }
@@ -886,6 +890,207 @@ namespace Himii
                     ImGui::Checkbox("Playing", &component.Playing);
                     ImGui::Text("Current Frame: %d", component.CurrentFrame);
                     ImGui::Text("Timer: %.2f", component.Timer);
+                });
+
+        DrawComponent<TilemapComponent>(
+                "Tilemap", entity, nullptr,
+                [](auto &component)
+                {
+                    auto assetManager = Project::GetAssetManager();
+
+                    // ---- TileMap Asset 引用 ----
+                    ImGui::PushID("TileMapHandle");
+                    {
+                        std::string label = "None (drag .tilemap)";
+                        if (component.TileMapHandle != 0 && assetManager && assetManager->IsAssetHandleValid(component.TileMapHandle))
+                        {
+                            label = "TileMap: " + std::to_string((uint64_t)component.TileMapHandle);
+                        }
+
+                        ImGui::Button(label.c_str(), ImVec2(-1, 0.0f));
+
+                        // 拖拽 .tilemap 文件
+                        if (ImGui::BeginDragDropTarget())
+                        {
+                            if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+                            {
+                                const wchar_t *path = (const wchar_t *)payload->Data;
+                                std::filesystem::path assetPath(path);
+                                if (assetPath.extension() == ".tilemap" && assetManager)
+                                {
+                                    AssetHandle handle = assetManager->ImportAsset(assetPath);
+                                    if (handle != 0)
+                                        component.TileMapHandle = handle;
+                                }
+                            }
+                            ImGui::EndDragDropTarget();
+                        }
+                    }
+                    ImGui::PopID();
+
+                    // ---- "新建 TileMap" 按钮 ----
+                    if (component.TileMapHandle == 0)
+                    {
+                        ImGui::Spacing();
+                        if (ImGui::Button("Create New TileMap", ImVec2(-1, 0)))
+                        {
+                            if (assetManager)
+                            {
+                                auto assetDir = Project::GetAssetDirectory();
+
+                                // 创建默认 TileSet
+                                auto tileSetAsset = std::make_shared<TileSet>();
+                                tileSetAsset->Handle = AssetHandle();
+
+                                TileDef whiteTile;
+                                whiteTile.ID = 1;
+                                whiteTile.SourceType = TileSourceType::Atlas;
+                                whiteTile.Tint = {1.0f, 1.0f, 1.0f, 1.0f};
+                                tileSetAsset->AddTileDef(whiteTile);
+
+                                std::filesystem::path tsDir = assetDir / "tilesets";
+                                std::filesystem::create_directories(tsDir);
+                                std::filesystem::path tsPath = tsDir / "default.tileset";
+                                // 避免覆盖：如果文件已存在则加序号
+                                int idx = 0;
+                                while (std::filesystem::exists(tsPath))
+                                    tsPath = tsDir / ("default_" + std::to_string(++idx) + ".tileset");
+
+                                TileSetSerializer::Serialize(tsPath, tileSetAsset);
+                                auto tsRelPath = std::filesystem::relative(tsPath, assetDir);
+                                AssetHandle tsHandle = assetManager->ImportAsset(tsRelPath);
+                                tileSetAsset->Handle = tsHandle;
+                                TileSetSerializer::Serialize(tsPath, tileSetAsset);
+
+                                // 创建默认 TileMapData (16x16)
+                                auto mapAsset = std::make_shared<TileMapData>();
+                                mapAsset->Handle = AssetHandle();
+                                mapAsset->SetTileSetHandle(tsHandle);
+                                mapAsset->Resize(16, 16);
+                                mapAsset->SetCellSize(1.0f);
+
+                                std::filesystem::path tmDir = assetDir / "tilemaps";
+                                std::filesystem::create_directories(tmDir);
+                                std::filesystem::path tmPath = tmDir / "new_tilemap.tilemap";
+                                idx = 0;
+                                while (std::filesystem::exists(tmPath))
+                                    tmPath = tmDir / ("new_tilemap_" + std::to_string(++idx) + ".tilemap");
+
+                                TileMapDataSerializer::Serialize(tmPath, mapAsset);
+                                auto tmRelPath = std::filesystem::relative(tmPath, assetDir);
+                                AssetHandle tmHandle = assetManager->ImportAsset(tmRelPath);
+                                mapAsset->Handle = tmHandle;
+                                TileMapDataSerializer::Serialize(tmPath, mapAsset);
+
+                                assetManager->SerializeAssetRegistry();
+
+                                component.TileMapHandle = tmHandle;
+                            }
+                        }
+                    }
+
+                    // ---- 如果已绑定 TileMap，显示编辑 UI ----
+                    if (component.TileMapHandle != 0 && assetManager && assetManager->IsAssetHandleValid(component.TileMapHandle))
+                    {
+                        auto asset = assetManager->GetAsset(component.TileMapHandle);
+                        if (asset)
+                        {
+                            auto mapData = std::static_pointer_cast<TileMapData>(asset);
+
+                            ImGui::Separator();
+                            ImGui::Text("TileMap Properties");
+
+                            // Width / Height
+                            int width = (int)mapData->GetWidth();
+                            int height = (int)mapData->GetHeight();
+                            float cellSize = mapData->GetCellSize();
+
+                            bool changed = false;
+                            if (ImGui::DragInt("Width", &width, 1.0f, 1, 1024))
+                            {
+                                mapData->Resize((uint32_t)width, mapData->GetHeight());
+                                changed = true;
+                            }
+                            if (ImGui::DragInt("Height", &height, 1.0f, 1, 1024))
+                            {
+                                mapData->Resize(mapData->GetWidth(), (uint32_t)height);
+                                changed = true;
+                            }
+                            if (ImGui::DragFloat("Cell Size", &cellSize, 0.05f, 0.1f, 10.0f))
+                            {
+                                mapData->SetCellSize(cellSize);
+                                changed = true;
+                            }
+
+                            // TileSet 引用
+                            ImGui::Separator();
+                            AssetHandle tsHandle = mapData->GetTileSetHandle();
+                            std::string tsLabel = (tsHandle != 0)
+                                ? "TileSet: " + std::to_string((uint64_t)tsHandle)
+                                : "No TileSet";
+                            ImGui::Text("%s", tsLabel.c_str());
+
+                            // 简易 Tile 编辑网格
+                            ImGui::Separator();
+                            ImGui::Text("Tile Grid (click to toggle)");
+
+                            uint32_t w = mapData->GetWidth();
+                            uint32_t h = mapData->GetHeight();
+
+                            // 限制显示大小，避免太大的地图卡 UI
+                            uint32_t displayW = (w > 32) ? 32 : w;
+                            uint32_t displayH = (h > 32) ? 32 : h;
+                            if (w > 32 || h > 32)
+                                ImGui::TextColored(ImVec4(1, 1, 0, 1), "Showing %dx%d of %dx%d", displayW, displayH, w, h);
+
+                            float btnSize = 18.0f;
+                            for (uint32_t y = 0; y < displayH; ++y)
+                            {
+                                for (uint32_t x = 0; x < displayW; ++x)
+                                {
+                                    if (x > 0) ImGui::SameLine(0, 1);
+
+                                    ImGui::PushID((int)(x + y * w));
+                                    uint16_t tileID = mapData->GetTile(x, y);
+
+                                    // 有 Tile 显示白色，空显示灰色
+                                    if (tileID > 0)
+                                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.9f, 0.9f, 0.9f, 1.0f));
+                                    else
+                                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
+
+                                    if (ImGui::Button("##tile", ImVec2(btnSize, btnSize)))
+                                    {
+                                        // 点击切换: 0 ↔ 1
+                                        mapData->SetTile(x, y, tileID > 0 ? 0 : 1);
+                                        changed = true;
+                                    }
+                                    ImGui::PopStyleColor();
+                                    ImGui::PopID();
+                                }
+                            }
+
+                            // 保存按钮
+                            ImGui::Spacing();
+                            if (ImGui::Button("Save TileMap", ImVec2(-1, 0)) || changed)
+                            {
+                                // 重新序列化到文件
+                                auto &registry = assetManager->GetAssetRegistry();
+                                auto it = registry.find(component.TileMapHandle);
+                                if (it != registry.end())
+                                {
+                                    auto fullPath = Project::GetAssetFileSystemPath(it->second.FilePath);
+                                    TileMapDataSerializer::Serialize(fullPath, mapData);
+                                }
+                            }
+
+                            // 解绑按钮
+                            if (ImGui::Button("Detach TileMap", ImVec2(-1, 0)))
+                            {
+                                component.TileMapHandle = 0;
+                            }
+                        }
+                    }
                 });
     }
 

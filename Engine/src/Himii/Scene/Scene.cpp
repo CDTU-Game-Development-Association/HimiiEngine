@@ -8,6 +8,8 @@
 #include "Himii/Renderer/Renderer2D.h"
 #include "Himii/Renderer/Renderer3D.h"
 #include "Himii/Scene/SpriteAnimation.h"
+#include "Himii/Scene/TileSet.h"
+#include "Himii/Scene/TileMapData.h"
 #include "Himii/Scripting/ScriptEngine.h"
 #include "ScriptableEntity.h"
 
@@ -246,6 +248,31 @@ namespace Himii
                           { Himii::Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity); });
             }
             {
+                if (Project::GetActive())
+                {
+                    auto assetManager = Project::GetAssetManager();
+                    auto view = m_Registry.view<TransformComponent, TilemapComponent>();
+                    view.each([&](entt::entity entity, TransformComponent &transform, TilemapComponent &tilemap)
+                    {
+                        if (!assetManager || tilemap.TileMapHandle == 0) return;
+
+                        auto mapAsset = assetManager->GetAsset(tilemap.TileMapHandle);
+                        if (!mapAsset) return;
+                        auto mapData = std::static_pointer_cast<TileMapData>(mapAsset);
+
+                        Ref<TileSet> tileSet = nullptr;
+                        if (mapData->GetTileSetHandle() != 0)
+                        {
+                            auto tsAsset = assetManager->GetAsset(mapData->GetTileSetHandle());
+                            if (tsAsset)
+                                tileSet = std::static_pointer_cast<TileSet>(tsAsset);
+                        }
+
+                        Himii::Renderer2D::DrawTilemap(transform.GetTransform(), mapData, tileSet, (int)entity);
+                    });
+                }
+            }
+            {
                 auto view = m_Registry.view<TransformComponent, CircleRendererComponent>();
                 view.each(
                         [&](entt::entity entity, TransformComponent &transform, CircleRendererComponent &circle) {
@@ -262,10 +289,14 @@ namespace Himii
              {
                  Renderer3D::BeginScene(*mainCamera, cameraTransform);
 
-                 if (m_SkyboxTexture)
+                 bool is2D = false;
+                 if (Project::GetActive())
+                    is2D = Project::GetActive()->GetConfig().Is2D;
+
+                 if (m_SkyboxTexture && !is2D)
                      Renderer3D::DrawSkybox(m_SkyboxTexture, *mainCamera, cameraTransform);
 
-                 Renderer3D::DrawGrid(*mainCamera, cameraTransform);
+                 // Renderer3D::DrawGrid(*mainCamera, cameraTransform, is2D);
 
                  auto view = m_Registry.view<TransformComponent, MeshComponent>();
                  view.each([&](entt::entity entity, TransformComponent &transform, MeshComponent &mesh)
@@ -282,6 +313,54 @@ namespace Himii
                  Renderer3D::EndScene();
              }
         }
+    }
+
+    static float RayCastCallback(b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fraction, void* context)
+    {
+        auto* ctx = (std::pair<Scene*, Scene::RaycastHit2D*>*)context;
+        Scene* scene = ctx->first;
+        Scene::RaycastHit2D* hit = ctx->second;
+        
+        hit->Hit = true;
+        hit->Point = {point.x, point.y};
+        hit->Normal = {normal.x, normal.y};
+        hit->Distance = fraction;
+
+        b2BodyId bodyId = b2Shape_GetBody(shapeId);
+        void* userData = b2Body_GetUserData(bodyId);
+        uint32_t entityHandle = (uint32_t)(uintptr_t)userData;
+        
+        entt::entity e = (entt::entity)entityHandle;
+        if(scene->Registry().valid(e))
+        {
+             hit->EntityID = scene->Registry().get<IDComponent>(e).ID;
+        }
+
+        return fraction;
+    }
+
+    Scene::RaycastHit2D Scene::Raycast2D(glm::vec2 start, glm::vec2 end)
+    {
+        RaycastHit2D hit;
+        hit.Hit = false;
+        
+        // Check if world is valid (Runtime running?)
+        if (!b2World_IsValid(m_Box2DWorld)) return hit;
+
+        b2Vec2 origin = {start.x, start.y};
+        b2Vec2 translation = {end.x - start.x, end.y - start.y};
+        b2QueryFilter filter = b2DefaultQueryFilter();
+        
+        std::pair<Scene*, RaycastHit2D*> context = {this, &hit};
+
+        b2World_CastRay(m_Box2DWorld, origin, translation, filter, RayCastCallback, &context);
+        
+        if(hit.Hit) {
+            float length = glm::length(end - start);
+            hit.Distance *= length;
+        }
+
+        return hit;
     }
 
     void Scene::OnUpdateSimulation(Timestep ts, EditorCamera &camera)
@@ -370,6 +449,7 @@ namespace Himii
         CopyComponent<CircleCollider2DComponent>(dstSceneRegistry, srcSceneRegistry, enttMap);
         CopyComponent<SpriteAnimationComponent>(dstSceneRegistry, srcSceneRegistry, enttMap);
         CopyComponent<MeshComponent>(dstSceneRegistry, srcSceneRegistry, enttMap);
+        CopyComponent<TilemapComponent>(dstSceneRegistry, srcSceneRegistry, enttMap);
 
         return newScene;
     }
@@ -411,6 +491,9 @@ namespace Himii
 
         if (entity.HasComponent<MeshComponent>())
             newEntity.AddComponent<MeshComponent>(entity.GetComponent<MeshComponent>());
+
+        if (entity.HasComponent<TilemapComponent>())
+            newEntity.AddComponent<TilemapComponent>(entity.GetComponent<TilemapComponent>());
 
         return newEntity;
     }
@@ -565,6 +648,33 @@ namespace Himii
             view.each([&](entt::entity entity, TransformComponent &transform, SpriteRendererComponent &sprite)
                       { Himii::Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity); });
         }
+        
+        // Draw Tilemaps
+        {
+            if (Project::GetActive())
+            {
+                auto assetManager = Project::GetAssetManager();
+                auto view = m_Registry.view<TransformComponent, TilemapComponent>();
+                view.each([&](entt::entity entity, TransformComponent &transform, TilemapComponent &tilemap)
+                {
+                    if (!assetManager || tilemap.TileMapHandle == 0) return;
+
+                    auto mapAsset = assetManager->GetAsset(tilemap.TileMapHandle);
+                    if (!mapAsset) return;
+                    auto mapData = std::static_pointer_cast<TileMapData>(mapAsset);
+
+                    Ref<TileSet> tileSet = nullptr;
+                    if (mapData->GetTileSetHandle() != 0)
+                    {
+                        auto tsAsset = assetManager->GetAsset(mapData->GetTileSetHandle());
+                        if (tsAsset)
+                            tileSet = std::static_pointer_cast<TileSet>(tsAsset);
+                    }
+
+                    Himii::Renderer2D::DrawTilemap(transform.GetTransform(), mapData, tileSet, (int)entity);
+                });
+            }
+        }
 
         // Draw Circles
         {
@@ -582,10 +692,15 @@ namespace Himii
         {
             Renderer3D::BeginScene(camera);
 
-            if (m_SkyboxTexture)
+            bool is2D = false;
+            if (Project::GetActive())
+               is2D = Project::GetActive()->GetConfig().Is2D;
+
+            if (m_SkyboxTexture && !is2D)
                 Renderer3D::DrawSkybox(m_SkyboxTexture, camera);
 
-            Renderer3D::DrawGrid(camera);
+            // Grid is handled by EditorLayer for 'Show Grid' toggle support.
+            // Renderer3D::DrawGrid(camera, is2D);
 
             auto view = m_Registry.view<TransformComponent, MeshComponent>();
             view.each([&](entt::entity entity, TransformComponent &transform, MeshComponent &mesh)
@@ -674,6 +789,11 @@ namespace Himii
 
     template<>
     void Scene::OnComponentAdded<MeshComponent>(Entity entity, MeshComponent &component)
+    {
+    }
+
+    template<>
+    void Scene::OnComponentAdded<TilemapComponent>(Entity entity, TilemapComponent &component)
     {
     }
 

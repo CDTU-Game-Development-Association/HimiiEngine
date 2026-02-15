@@ -644,6 +644,172 @@ namespace Himii
         DrawLine(lineVertices[3], lineVertices[0], color, entityID);
     }
 
+    void Renderer2D::DrawTilemap(const glm::mat4 &transform, const Ref<TileMapData>& mapData, const Ref<TileSet>& tileSet, int entityID)
+    {
+        HIMII_PROFILE_FUNCTION();
+
+        if (!mapData) return;
+
+        uint32_t width = mapData->GetWidth();
+        uint32_t height = mapData->GetHeight();
+        float cellSize = mapData->GetCellSize();
+        const auto &tiles = mapData->GetTiles();
+
+        if (tiles.size() < (size_t)(width * height))
+            return;
+
+        // 预缓存 Atlas 纹理槽位：为每个 AtlasSource 分配纹理槽
+        // key: atlasSourceIndex, value: textureIndex in batch
+        std::unordered_map<uint32_t, float> atlasTextureIndices;
+        if (tileSet)
+        {
+            const auto &sources = tileSet->GetAtlasSources();
+            for (uint32_t si = 0; si < sources.size(); ++si)
+            {
+                Ref<Texture2D> tex = sources[si].CachedTexture;
+                if (!tex) continue;
+
+                float texIdx = 0.0f;
+                for (uint32_t i = 1; i < s_Data.TextureSlotIndex; i++)
+                {
+                    if (s_Data.TextureSlots[i] && *s_Data.TextureSlots[i] == *tex)
+                    {
+                        texIdx = (float)i;
+                        break;
+                    }
+                }
+                if (texIdx == 0.0f)
+                {
+                    if (s_Data.TextureSlotIndex >= Renderer2DData::MaxTextureSlots)
+                        NextBatch();
+                    texIdx = (float)s_Data.TextureSlotIndex;
+                    s_Data.TextureSlots[s_Data.TextureSlotIndex] = tex;
+                    s_Data.TextureSlotIndex++;
+                }
+                atlasTextureIndices[si] = texIdx;
+            }
+        }
+
+        // 遍历所有 Tile
+        for (uint32_t y = 0; y < height; ++y)
+        {
+            for (uint32_t x = 0; x < width; ++x)
+            {
+                uint16_t tileID = tiles[x + y * width];
+                if (tileID == 0) continue;
+
+                if (NeedsNewBatch(4, 6)) NextBatch();
+
+                // 查找 TileDef 以确定纹理和 UV
+                float textureIndex = 0.0f; // 默认：白色纹理
+                glm::vec2 texCoords[4] = {
+                    {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f}
+                };
+                glm::vec4 tint{1, 1, 1, 1};
+
+                if (tileSet)
+                {
+                    const TileDef *def = tileSet->GetTileDef(tileID);
+                    if (def)
+                    {
+                        tint = def->Tint;
+
+                        if (def->SourceType == TileSourceType::Atlas)
+                        {
+                            auto it = atlasTextureIndices.find(def->AtlasSourceIndex);
+                            if (it != atlasTextureIndices.end())
+                            {
+                                textureIndex = it->second;
+
+                                const auto &sources = tileSet->GetAtlasSources();
+                                if (def->AtlasSourceIndex < sources.size())
+                                {
+                                    const auto &src = sources[def->AtlasSourceIndex];
+                                    if (src.CachedTexture)
+                                    {
+                                        float texW = (float)src.CachedTexture->GetWidth();
+                                        float texH = (float)src.CachedTexture->GetHeight();
+                                        float ts = (float)src.TileSize;
+                                        if (ts <= 0) ts = 16.0f;
+
+                                        int cols = (int)(texW / ts);
+                                        if (cols <= 0) cols = 1;
+                                        float uSize = ts / texW;
+                                        float vSize = ts / texH;
+
+                                        int col = def->AtlasCoords.x;
+                                        int row = def->AtlasCoords.y;
+
+                                        float u0 = col * uSize;
+                                        float u1 = (col + 1) * uSize;
+                                        float v0 = row * vSize;
+                                        float v1 = (row + 1) * vSize;
+
+                                        texCoords[0] = {u0, v0};
+                                        texCoords[1] = {u1, v0};
+                                        texCoords[2] = {u1, v1};
+                                        texCoords[3] = {u0, v1};
+                                    }
+                                }
+                            }
+                        }
+                        else if (def->SourceType == TileSourceType::Individual)
+                        {
+                            // 独立纹理模式
+                            Ref<Texture2D> indivTex = def->CachedIndividualTexture;
+                            if (indivTex)
+                            {
+                                float texIdx = 0.0f;
+                                for (uint32_t i = 1; i < s_Data.TextureSlotIndex; i++)
+                                {
+                                    if (s_Data.TextureSlots[i] && *s_Data.TextureSlots[i] == *indivTex)
+                                    {
+                                        texIdx = (float)i;
+                                        break;
+                                    }
+                                }
+                                if (texIdx == 0.0f)
+                                {
+                                    if (s_Data.TextureSlotIndex >= Renderer2DData::MaxTextureSlots)
+                                        NextBatch();
+                                    texIdx = (float)s_Data.TextureSlotIndex;
+                                    s_Data.TextureSlots[s_Data.TextureSlotIndex] = indivTex;
+                                    s_Data.TextureSlotIndex++;
+                                }
+                                textureIndex = texIdx;
+                                // 独立纹理使用全 UV
+                            }
+                        }
+                    }
+                }
+                // 无 TileSet 或无 TileDef：使用白色纹理 (textureIndex=0, 全 UV)
+
+                // 计算每个 Tile 的四个顶点位置
+                float px = (float)x * cellSize;
+                float py = (float)y * cellSize;
+                glm::vec4 localPos[4] = {
+                    {px,            py,            0.0f, 1.0f},
+                    {px + cellSize, py,            0.0f, 1.0f},
+                    {px + cellSize, py + cellSize, 0.0f, 1.0f},
+                    {px,            py + cellSize, 0.0f, 1.0f}
+                };
+
+                for (int i = 0; i < 4; i++)
+                {
+                    s_Data.QuadVertexBufferPtr->Position = transform * localPos[i];
+                    s_Data.QuadVertexBufferPtr->Color = tint;
+                    s_Data.QuadVertexBufferPtr->TexCoord = texCoords[i];
+                    s_Data.QuadVertexBufferPtr->TexIndex = textureIndex;
+                    s_Data.QuadVertexBufferPtr->TilingFactor = 1.0f;
+                    s_Data.QuadVertexBufferPtr->EntityID = entityID;
+                    s_Data.QuadVertexBufferPtr++;
+                }
+                s_Data.QuadIndexCount += 6;
+                s_Data.Stats.QuadCount++;
+            }
+        }
+    }
+
     void Renderer2D::DrawSprite(const glm::mat4 &transform, SpriteRendererComponent &sprite, int entityID)
     {
         if (sprite.Texture)

@@ -35,13 +35,22 @@ namespace Himii
         {
             case AssetType::Texture2D:
             {
-                // 加载 Texture2D，Texture2D::Create 应该返回 Ref<Texture2D>
                 asset = Texture2D::Create(pathString);
                 break;
             }
             case AssetType::SpriteAnimation:
             {
                 asset = SpriteAnimationSerializer::Deserialize(pathString);
+                break;
+            }
+            case AssetType::TileSet:
+            {
+                asset = TileSetSerializer::Deserialize(pathString);
+                break;
+            }
+            case AssetType::TileMap:
+            {
+                asset = TileMapDataSerializer::Deserialize(pathString);
                 break;
             }
             case AssetType::None:
@@ -113,6 +122,10 @@ namespace Himii
             return AssetType::SpriteAnimation;
         if (ext == ".himii")
             return AssetType::Scene;
+        if (ext == ".tileset")
+            return AssetType::TileSet;
+        if (ext == ".tilemap")
+            return AssetType::TileMap;
 
         return AssetType::None;
     }

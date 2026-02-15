@@ -1,4 +1,4 @@
-﻿#include "EditorLayer.h"
+#include "EditorLayer.h"
 #include "imgui.h"
 #include "Himii/Scripting/ScriptEngine.h"
 #include "Himii/Project/Project.h"
@@ -56,22 +56,7 @@ namespace Himii
         {
             OpenProject(commandLineArgs.Args[1]);
         }
-        else
-        {
-            // 2. 开发模式：如果有 HIMII_ROOT_DIR 且用户没有特别设置，是否自动打开？
-            // 为了展示 Hub，这里修改为：如果不强制要求，默认不打开。
-            // 如果确实需要自动打开用于调试，可以取消下面的注释，或者加个 Engine 配置。
-/*
-#ifdef HIMII_ROOT_DIR
-            // 自动打开源码目录下的测试项目
-            std::filesystem::path root(HIMII_ROOT_DIR);
-            std::filesystem::path sandboxProject = root / "Sandbox" / "Sandbox.hproj"; 
-            if (std::filesystem::exists(sandboxProject))
-                OpenProject(sandboxProject);
-#endif
-*/
-            // 保持无 Project 状态，以显示 Hub
-        }
+
     }
     void EditorLayer::OnDetach()
     {
@@ -81,8 +66,6 @@ namespace Himii
     void EditorLayer::OnUpdate(Timestep ts)
     {
         HIMII_PROFILE_FUNCTION();
-
-        // m_CameraController.OnUpdate(ts);
 
         if (FramebufferSpecification spec = m_Framebuffer->GetSpecification();
             m_ViewportSize.x > 0.0f && m_ViewportSize.y > 0.0f &&
@@ -114,7 +97,12 @@ namespace Himii
         {
             case SceneState::Edit:
             {
-                m_EditorCamera.OnUpdate(ts, m_ViewportHovered);
+                bool is2D = false;
+                if (Project::GetActive())
+                    is2D = Project::GetActive()->GetConfig().Is2D;
+
+                m_EditorCamera.OnUpdate(ts, m_ViewportHovered, is2D);
+                
                 m_ActiveScene->OnUpdateEditor(ts, m_EditorCamera);
                 break;
             }
@@ -124,8 +112,14 @@ namespace Himii
                 break;
             }
             case SceneState::Simulate:
-                m_EditorCamera.OnUpdate(ts, m_ViewportHovered);
-                m_ActiveScene->OnUpdateSimulation(ts, m_EditorCamera);
+                {
+                    bool is2D = false;
+                    if (Project::GetActive())
+                        is2D = Project::GetActive()->GetConfig().Is2D;
+                        
+                    m_EditorCamera.OnUpdate(ts, m_ViewportHovered, is2D);
+                    m_ActiveScene->OnUpdateSimulation(ts, m_EditorCamera);
+                }
                 break;
             default:
                 break;
@@ -299,8 +293,6 @@ namespace Himii
             ImGui::Begin("Settings");
             ImGui::Checkbox("Show physics colliders", &m_ShowPhysicsColliders);
 
-            //ImGui::Image((ImTextureID)s_Font->GetAtlasTexture()->GetRendererID(), {512, 512}, {0, 1}, {1, 0});
-
             ImGui::End();
 
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{0, 0});
@@ -341,20 +333,25 @@ namespace Himii
             {
                 bool is2D = Project::GetConfig().Is2D;
                 ImGuizmo::SetOrthographic(is2D);
+
                 ImGuizmo::SetDrawlist();
 
                 float windowWidth = ImGui::GetWindowWidth();
                 float windowHeight = ImGui::GetWindowHeight();
                 ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, windowWidth, windowHeight);
 
-                // Only enable gizmo if viewport is hovered or we are already using it
+                ImGuizmo::OPERATION currentGizmoOperation = (ImGuizmo::OPERATION)m_GizmoType;
+                if (is2D)
+                {
+                    if (m_GizmoType == ImGuizmo::TRANSLATE)
+                        currentGizmoOperation = (ImGuizmo::OPERATION)(ImGuizmo::TRANSLATE_X | ImGuizmo::TRANSLATE_Y);
+                    else if (m_GizmoType == ImGuizmo::ROTATE)
+                        currentGizmoOperation = ImGuizmo::ROTATE_Z;
+                    else if (m_GizmoType == ImGuizmo::SCALE)
+                        currentGizmoOperation = (ImGuizmo::OPERATION)(ImGuizmo::SCALE_X | ImGuizmo::SCALE_Y);
+                }
+
                 ImGuizmo::Enable(m_ViewportHovered || ImGuizmo::IsUsing());
-                
-                // runtime camera
-                /*auto cameraEntity = m_ActiveScene->GetPrimaryCameraEntity();
-                const auto &camera = cameraEntity.GetComponent<CameraComponent>().camera;
-                const glm::mat4 &cameraProjection = camera.GetProjection();
-                glm::mat4 cameraView = glm::inverse(cameraEntity.GetComponent<TransformComponent>().GetTransform());*/
 
                 // editor camera
                 const glm::mat4 &cameraProjection = m_EditorCamera.GetProjection();
@@ -373,7 +370,7 @@ namespace Himii
                 float snapValues[3] = {snapValue, snapValue, snapValue};
 
                 ImGuizmo::Manipulate(glm::value_ptr(cameraView), glm::value_ptr(cameraProjection),
-                                     (ImGuizmo::OPERATION)m_GizmoType, ImGuizmo::LOCAL, glm::value_ptr(transform),
+                                     currentGizmoOperation, ImGuizmo::LOCAL, glm::value_ptr(transform),
                                      nullptr, snap ? snapValues : nullptr);
 
                 if (ImGuizmo::IsUsing())
@@ -524,18 +521,19 @@ namespace Himii
 
         if (m_ShowGrid)
         {
+            bool is2D = false;
+            if (Project::GetActive())
+                 is2D = Project::GetActive()->GetConfig().Is2D;
+
             if (m_SceneState == SceneState::Play)
             {
-               Entity camera = m_ActiveScene->GetPrimaryCameraEntity();
-               if(camera)
-               {
-                   Renderer3D::DrawGrid(camera.GetComponent<CameraComponent>().Camera,
-                                        camera.GetComponent<TransformComponent>().GetTransform());
-               }
+               // Scene::OnUpdateRuntime calls RenderScene calls DrawGrid. 
+               // Do we need to draw it again? Probably not. 
+               // But if we do, it should be correct.
             }
             else
             {
-                Renderer3D::DrawGrid(m_EditorCamera);
+                Renderer3D::DrawGrid(m_EditorCamera, is2D);
             }
         }
 
@@ -696,6 +694,7 @@ namespace Himii
             {
                 NewScene();
             }
+
         }
     }
 

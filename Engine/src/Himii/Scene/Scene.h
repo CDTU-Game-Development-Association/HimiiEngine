@@ -21,6 +21,15 @@ namespace Himii
         ~Scene();
 
         static Ref<Scene> Copy(Ref<Scene> other);
+        
+        struct RaycastHit2D {
+            glm::vec2 Point;
+            glm::vec2 Normal;
+            float Distance;
+            uint64_t EntityID; 
+            bool Hit;
+        };
+        RaycastHit2D Raycast2D(glm::vec2 start, glm::vec2 end);
 
         Entity CreateEntityWithUUID(UUID uuid, const std::string &name);
         Entity CreateEntity(const std::string &name);
@@ -76,6 +85,7 @@ namespace Himii
         {
             return m_SkyboxTexture;
         }
+
     private:
         template<typename T>
         void OnComponentAdded(Entity entity, T &component);

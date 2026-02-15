@@ -14,7 +14,7 @@ namespace Himii {
         EditorCamera() = default;
         EditorCamera(float fov,float aspectRatio,float nearClip,float farClip);
         
-        void OnUpdate(Timestep ts, bool allowInput = true);
+        void OnUpdate(Timestep ts, bool allowInput = true, bool is2D = false);
         void OnEvent(Event &event);
 
         inline float GetDistance() const

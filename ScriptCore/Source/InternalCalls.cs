@@ -25,6 +25,13 @@ namespace Himii
         internal delegate void Rigidbody2DGetVelocityDelegate(ulong entityID, out Vector2 velocity);
         internal delegate void Rigidbody2DSetVelocityDelegate(ulong entityID, ref Vector2 velocity);
 
+        internal delegate void TilemapGetSizeDelegate(ulong entityID, out uint width, out uint height);
+        internal delegate void TilemapSetSizeDelegate(ulong entityID, uint width, uint height);
+        internal delegate ushort TilemapGetTileDelegate(ulong entityID, uint x, uint y);
+        internal delegate void TilemapSetTileDelegate(ulong entityID, uint x, uint y, ushort tileID);
+
+        internal delegate void Physics2DRaycastDelegate(ref Vector2 start, ref Vector2 end, out RaycastHit2D hit);
+
         // static fields to hold the delegates
         internal static LogFuncDelegate NativeLog;
 
@@ -48,6 +55,13 @@ namespace Himii
         internal static Rigidbody2DApplyImpulseCenterDelegate Rigidbody2D_ApplyLinearImpulseToCenter;
         internal static Rigidbody2DGetVelocityDelegate Rigidbody2D_GetLinearVelocity;
         internal static Rigidbody2DSetVelocityDelegate Rigidbody2D_SetLinearVelocity;
+
+        internal static TilemapGetSizeDelegate Tilemap_GetSize;
+        internal static TilemapSetSizeDelegate Tilemap_SetSize;
+        internal static TilemapGetTileDelegate Tilemap_GetTile;
+        internal static TilemapSetTileDelegate Tilemap_SetTile;
+
+        internal static Physics2DRaycastDelegate Physics2D_Raycast;
 
         [UnmanagedCallersOnly]
         public static void Initialize(IntPtr functionTablePtr)
@@ -76,6 +90,13 @@ namespace Himii
             Rigidbody2D_ApplyLinearImpulseToCenter = Marshal.GetDelegateForFunctionPointer<Rigidbody2DApplyImpulseCenterDelegate>(funcs.Rigidbody2D_ApplyLinearImpulseToCenter);
             Rigidbody2D_GetLinearVelocity = Marshal.GetDelegateForFunctionPointer<Rigidbody2DGetVelocityDelegate>(funcs.Rigidbody2D_GetLinearVelocity);
             Rigidbody2D_SetLinearVelocity = Marshal.GetDelegateForFunctionPointer<Rigidbody2DSetVelocityDelegate>(funcs.Rigidbody2D_SetLinearVelocity);
+
+            Tilemap_GetSize = Marshal.GetDelegateForFunctionPointer<TilemapGetSizeDelegate>(funcs.Tilemap_GetSize);
+            Tilemap_SetSize = Marshal.GetDelegateForFunctionPointer<TilemapSetSizeDelegate>(funcs.Tilemap_SetSize);
+            Tilemap_GetTile = Marshal.GetDelegateForFunctionPointer<TilemapGetTileDelegate>(funcs.Tilemap_GetTile);
+            Tilemap_SetTile = Marshal.GetDelegateForFunctionPointer<TilemapSetTileDelegate>(funcs.Tilemap_SetTile);
+
+            Physics2D_Raycast = Marshal.GetDelegateForFunctionPointer<Physics2DRaycastDelegate>(funcs.Physics2D_Raycast);
 
             Console.WriteLine("[C#] InternalCalls initialized.");
         }
