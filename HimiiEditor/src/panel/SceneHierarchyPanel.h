@@ -24,6 +24,13 @@ namespace Himii
             m_SelectionContext = entity;
         }
 
+        AssetHandle GetTileMapEditorRequest()
+        {
+            AssetHandle h = m_TileMapEditorRequest;
+            m_TileMapEditorRequest = 0;
+            return h;
+        }
+
     private:
         template<typename T>
         void DisplayAddComponentEntry(const std::string &entryName);
@@ -35,5 +42,6 @@ namespace Himii
         Ref<Scene> m_Context;
         Entity m_SelectionContext;
         std::unordered_map<std::string, Ref<Texture2D>> m_ComponentIcons;
+        AssetHandle m_TileMapEditorRequest = 0;
     };
 }

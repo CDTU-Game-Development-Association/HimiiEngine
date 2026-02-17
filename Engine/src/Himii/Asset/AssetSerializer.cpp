@@ -203,8 +203,8 @@ namespace Himii
         out << YAML::Key << "AssetType" << YAML::Value << "TileMap";
         out << YAML::Key << "Handle" << YAML::Value << (uint64_t)tileMapData->Handle;
         out << YAML::Key << "TileSetHandle" << YAML::Value << (uint64_t)tileMapData->GetTileSetHandle();
-        out << YAML::Key << "Width" << YAML::Value << tileMapData->GetWidth();
-        out << YAML::Key << "Height" << YAML::Value << tileMapData->GetHeight();
+        out << YAML::Key << "HalfWidth" << YAML::Value << tileMapData->GetHalfWidth();
+        out << YAML::Key << "HalfHeight" << YAML::Value << tileMapData->GetHalfHeight();
         out << YAML::Key << "CellSize" << YAML::Value << tileMapData->GetCellSize();
 
         // Tiles 数据 - Flow 模式紧凑存储
@@ -250,15 +250,25 @@ namespace Himii
             if (data["TileSetHandle"])
                 tileMapData->SetTileSetHandle(data["TileSetHandle"].as<uint64_t>());
 
-            uint32_t width = data["Width"] ? data["Width"].as<uint32_t>() : 0;
-            uint32_t height = data["Height"] ? data["Height"].as<uint32_t>() : 0;
+            uint32_t halfWidth = 0, halfHeight = 0;
+            if (data["HalfWidth"] && data["HalfHeight"])
+            {
+                halfWidth = data["HalfWidth"].as<uint32_t>();
+                halfHeight = data["HalfHeight"].as<uint32_t>();
+            }
+            else if (data["Width"] && data["Height"])
+            {
+                uint32_t w = data["Width"].as<uint32_t>();
+                uint32_t h = data["Height"].as<uint32_t>();
+                halfWidth = (w > 0) ? (w - 1) / 2 : 0;
+                halfHeight = (h > 0) ? (h - 1) / 2 : 0;
+            }
 
             if (data["CellSize"])
                 tileMapData->SetCellSize(data["CellSize"].as<float>());
 
-            if (width > 0 && height > 0)
             {
-                tileMapData->Resize(width, height);
+                tileMapData->Resize(halfWidth, halfHeight);
 
                 if (data["Tiles"] && data["Tiles"].IsSequence())
                 {

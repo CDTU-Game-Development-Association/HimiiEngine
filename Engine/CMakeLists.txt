@@ -38,7 +38,6 @@ if (WIN32)
 elseif (UNIX AND NOT APPLE)
     # 排除Windows特定的平台工具（使用Win32 API）
     list(REMOVE_ITEM SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Windows/WindowsPlatformUtils.cpp")
-    # 排除DirectX特定代码
     file(GLOB_RECURSE DIRECTX_SOURCES "src/Platform/DirectX/*.cpp")
     if (DIRECTX_SOURCES)
         list(REMOVE_ITEM SOURCES ${DIRECTX_SOURCES})

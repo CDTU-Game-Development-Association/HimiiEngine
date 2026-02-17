@@ -784,9 +784,11 @@ namespace Himii
                 }
                 // 无 TileSet 或无 TileDef：使用白色纹理 (textureIndex=0, 全 UV)
 
-                // 计算每个 Tile 的四个顶点位置
-                float px = (float)x * cellSize;
-                float py = (float)y * cellSize;
+                // 计算每个 Tile 的四个顶点位置（地图居中：原点在中心）
+                float offsetX = -(float)width * cellSize * 0.5f;
+                float offsetY = -(float)height * cellSize * 0.5f;
+                float px = offsetX + (float)x * cellSize;
+                float py = offsetY + (float)y * cellSize;
                 glm::vec4 localPos[4] = {
                     {px,            py,            0.0f, 1.0f},
                     {px + cellSize, py,            0.0f, 1.0f},

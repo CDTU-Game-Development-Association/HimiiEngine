@@ -260,6 +260,7 @@ namespace Himii
                 if (ImGui::BeginMenu("Window"))
                 {
                     ImGui::MenuItem("Animation Editor", nullptr, &m_ShowAnimationPanel);
+                    ImGui::MenuItem("TileMap Editor", nullptr, &m_ShowTileMapEditor);
                     ImGui::MenuItem("Show Grid", nullptr, &m_ShowGrid);
                     ImGui::EndMenu();
                 }
@@ -270,6 +271,15 @@ namespace Himii
             m_SceneHierarchyPanel.OnImGuiRender();
             m_ContentBrowserPanel.OnImGuiRender();
             m_AnimationPanel.OnImGuiRender(m_ShowAnimationPanel);
+            m_TileMapEditorPanel.OnImGuiRender(m_ShowTileMapEditor);
+
+            // Check if SceneHierarchyPanel requested opening a TileMap in the editor
+            AssetHandle tmEditorRequest = m_SceneHierarchyPanel.GetTileMapEditorRequest();
+            if (tmEditorRequest != 0)
+            {
+                m_ShowTileMapEditor = true;
+                m_TileMapEditorPanel.Open(tmEditorRequest);
+            }
 
             
 

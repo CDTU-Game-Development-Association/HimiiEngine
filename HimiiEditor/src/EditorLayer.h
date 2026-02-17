@@ -3,6 +3,7 @@
 #include "panel/SceneHierarchyPanel.h"
 #include "panel/ContentBrowserPanel.h"
 #include "panel/AnimationPanel.h"
+#include "panel/TileMapEditorPanel.h"
 
 #include "Himii/Renderer/EditorCamera.h"
 
@@ -92,6 +93,9 @@ namespace Himii
 
         AnimationPanel m_AnimationPanel;
         bool m_ShowAnimationPanel = false;
+
+        TileMapEditorPanel m_TileMapEditorPanel;
+        bool m_ShowTileMapEditor = false;
 
         Ref<Texture2D> m_IconPlay, m_IconStop, m_IconSimulate;
         Ref<TextureCube> m_SkyboxTexture;

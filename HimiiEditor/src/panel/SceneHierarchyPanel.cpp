@@ -894,7 +894,7 @@ namespace Himii
 
         DrawComponent<TilemapComponent>(
                 "Tilemap", entity, nullptr,
-                [](auto &component)
+                [this](auto &component)
                 {
                     auto assetManager = Project::GetAssetManager();
 
@@ -966,7 +966,7 @@ namespace Himii
                                 auto mapAsset = std::make_shared<TileMapData>();
                                 mapAsset->Handle = AssetHandle();
                                 mapAsset->SetTileSetHandle(tsHandle);
-                                mapAsset->Resize(16, 16);
+                                mapAsset->Resize(8, 8);
                                 mapAsset->SetCellSize(1.0f);
 
                                 std::filesystem::path tmDir = assetDir / "tilemaps";
@@ -989,6 +989,16 @@ namespace Himii
                         }
                     }
 
+                    // ---- "在 TileMap 编辑器中打开" 按钮 ----
+                    if (component.TileMapHandle != 0 && assetManager && assetManager->IsAssetHandleValid(component.TileMapHandle))
+                    {
+                        ImGui::Spacing();
+                        if (ImGui::Button("Open in TileMap Editor", ImVec2(-1, 0)))
+                        {
+                            m_TileMapEditorRequest = component.TileMapHandle;
+                        }
+                    }
+
                     // ---- 如果已绑定 TileMap，显示编辑 UI ----
                     if (component.TileMapHandle != 0 && assetManager && assetManager->IsAssetHandleValid(component.TileMapHandle))
                     {
@@ -1000,22 +1010,23 @@ namespace Himii
                             ImGui::Separator();
                             ImGui::Text("TileMap Properties");
 
-                            // Width / Height
-                            int width = (int)mapData->GetWidth();
-                            int height = (int)mapData->GetHeight();
+                            // Half Width / Half Height（总格数 = (2*Half+1)，中心在格子中心）
+                            int halfW = (int)mapData->GetHalfWidth();
+                            int halfH = (int)mapData->GetHalfHeight();
                             float cellSize = mapData->GetCellSize();
 
                             bool changed = false;
-                            if (ImGui::DragInt("Width", &width, 1.0f, 1, 1024))
+                            if (ImGui::DragInt("Half Width", &halfW, 1.0f, 0, 512))
                             {
-                                mapData->Resize((uint32_t)width, mapData->GetHeight());
+                                mapData->Resize((uint32_t)(halfW > 0 ? halfW : 0), mapData->GetHalfHeight());
                                 changed = true;
                             }
-                            if (ImGui::DragInt("Height", &height, 1.0f, 1, 1024))
+                            if (ImGui::DragInt("Half Height", &halfH, 1.0f, 0, 512))
                             {
-                                mapData->Resize(mapData->GetWidth(), (uint32_t)height);
+                                mapData->Resize(mapData->GetHalfWidth(), (uint32_t)(halfH > 0 ? halfH : 0));
                                 changed = true;
                             }
+                            ImGui::TextDisabled("Grid: %u x %u", mapData->GetWidth(), mapData->GetHeight());
                             if (ImGui::DragFloat("Cell Size", &cellSize, 0.05f, 0.1f, 10.0f))
                             {
                                 mapData->SetCellSize(cellSize);

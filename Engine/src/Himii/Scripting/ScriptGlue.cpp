@@ -300,7 +300,9 @@ namespace Himii {
         auto mapData = GetTileMapDataFromEntity(entity);
         if (!mapData) return;
 
-        mapData->Resize(width, height);
+        uint32_t halfW = (width > 0) ? (width - 1) / 2 : 0;
+        uint32_t halfH = (height > 0) ? (height - 1) / 2 : 0;
+        mapData->Resize(halfW, halfH);
     }
 
     static uint16_t Tilemap_GetTile(uint64_t entityID, uint32_t x, uint32_t y)

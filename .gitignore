@@ -55,6 +55,9 @@ bin/
 # VS Code
 .vscode/
 
+# Cursor
+.cursor/
+
 # Qt Creator
 *.pro.user
 *.pro.user.*
