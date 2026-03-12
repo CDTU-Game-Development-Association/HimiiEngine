@@ -64,17 +64,48 @@ namespace Himii {
         return entity ? (uint64_t)entity.GetUUID() : 0;
     }
 
-	static bool Entity_HasComponent(uint64_t entityID, void* scenePtr)
+    // 稳定 FNV-1a 32-bit（与 ScriptCore/HashUtils.cs 保持一致）
+    static uint32_t Fnv1A32(std::string_view text)
+    {
+        constexpr uint32_t FnvOffsetBasis = 2166136261u;
+        constexpr uint32_t FnvPrime = 16777619u;
+
+        uint32_t hash = FnvOffsetBasis;
+        for (char c : text)
+        {
+            hash ^= (uint8_t)c;
+            hash *= FnvPrime;
+        }
+        return hash;
+    }
+
+	// 重要：跨语言返回值用 byte(0/1)，避免 bool ABI/封送问题
+	static uint8_t Entity_HasComponent(uint64_t entityID, int typeHashCode)
 	{
         Scene *scene = ScriptEngine::GetSceneContext();
         if (!scene)
-            return false;
+            return 0;
         Entity entity = scene->GetEntityByUUID(entityID);
         if (!entity)
-            return false;
+            return 0;
 
-        // TODO: 实现 Managed Type 到 Native Component 的映射系统
-        return true; 
+        const uint32_t typeId = (uint32_t)typeHashCode;
+
+        // ScriptCore 侧的类型全名（namespace + class）
+        // 这里先做“最小可用”的映射：满足 Tilemap 脚本用例
+        static const uint32_t TilemapId = Fnv1A32("Himii.Tilemap");
+        static const uint32_t Rigidbody2DId = Fnv1A32("Himii.Rigidbody2D");
+        static const uint32_t TransformId = Fnv1A32("Himii.Transform");
+
+        if (typeId == TilemapId)
+            return entity.HasComponent<TilemapComponent>() ? 1 : 0;
+        if (typeId == Rigidbody2DId)
+            return entity.HasComponent<Rigidbody2DComponent>() ? 1 : 0;
+        if (typeId == TransformId)
+            return entity.HasComponent<TransformComponent>() ? 1 : 0;
+
+        // 未注册的组件类型：默认认为不存在
+        return 0;
 	}
 
 	static void Transform_GetTranslation(uint64_t entityID, glm::vec3 *outTranslation)

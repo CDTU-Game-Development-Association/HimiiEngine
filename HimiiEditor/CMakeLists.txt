@@ -9,7 +9,13 @@ set(ALL_SOURCES
     ${HEADERS}
 )
 
-add_executable(HimiiEditor ${ALL_SOURCES})
+# Windows 下通过 .rc 资源文件为可执行程序嵌入应用图标
+if (WIN32)
+    set(APP_ICON_RESOURCE "AppIcon.rc")
+endif()
+
+# 使用控制台子系统，保留控制台窗口用于查看日志；图标仍然通过 .rc 嵌入 exe
+add_executable(HimiiEditor ${ALL_SOURCES} ${APP_ICON_RESOURCE})
 
 # Link against the Engine library
 target_link_libraries(HimiiEditor PRIVATE Engine)

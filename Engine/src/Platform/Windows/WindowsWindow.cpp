@@ -1,4 +1,4 @@
-﻿#include "Hepch.h"
+#include "Hepch.h"
 #include "Himii/Core/Log.h"
 #include "WindowsWindow.h"
 #include "Himii/Core/Input.h"
@@ -7,6 +7,12 @@
 #include "Himii/Events/ApplicationEvent.h"
 #include "Himii/Events/KeyEvent.h"
 #include "Himii/Events/MouseEvent.h"
+
+// Windows 平台下，用 Win32 API 为 GLFW 创建的窗口设置图标
+#include <windows.h>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
 
 namespace Himii
 {
@@ -50,10 +56,10 @@ namespace Himii
             glfwSetErrorCallback(GLFWErrorCallback);
         }
 
-    HIMII_PROFILE_SCOPE("glfwCreateWindow");
-    // 默认最大化窗口
-    //glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
-    glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
+        HIMII_PROFILE_SCOPE("glfwCreateWindow");
+        // 默认最大化窗口
+        //glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+        glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
         m_Window = glfwCreateWindow((int)props.Width, props.Height, m_Data.Title.c_str(), nullptr, nullptr);
         ++s_GLFWWindwCount;
 
@@ -66,10 +72,38 @@ namespace Himii
             glfwTerminate();
             return;
         }
-    // 再次确保最大化（防止某些平台忽略 hint）
-    glfwMaximizeWindow(m_Window);
 
-    glfwSetWindowUserPointer(m_Window, &m_Data);
+        // 为当前 GLFW 窗口设置 Win32 图标（使用 HimiiEditor/resources/icon/HimiiEngine.ico）
+        {
+            HWND hwnd = glfwGetWin32Window(m_Window);
+            if (hwnd)
+            {
+                // 这里使用运行目录下的资源路径：HimiiEditor CMake 已经把 resources 拷贝到可执行文件旁
+                constexpr const char* IconPath = "resources/icons/HimiiEngine.ico";
+                HICON hIcon = static_cast<HICON>(LoadImageA(
+                    nullptr,
+                    IconPath,
+                    IMAGE_ICON,
+                    0, 0,
+                    LR_LOADFROMFILE | LR_DEFAULTSIZE
+                ));
+
+                if (hIcon)
+                {
+                    SendMessage(hwnd, WM_SETICON, ICON_BIG,   reinterpret_cast<LPARAM>(hIcon));
+                    SendMessage(hwnd, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(hIcon));
+                }
+                else
+                {
+                    HIMII_CORE_WARNING("Failed to load window icon from path: {0}", IconPath);
+                }
+            }
+        }
+
+        // 再次确保最大化（防止某些平台忽略 hint）
+        glfwMaximizeWindow(m_Window);
+
+        glfwSetWindowUserPointer(m_Window, &m_Data);
 
         SetVSync(true);
 

@@ -9,14 +9,13 @@
     "stb",
     "yaml-cpp",
     "entt",
-    {
-    "name": "vulkan",
-    "platform": "windows | osx"  
-   },
+    {"name": "vulkan", "platform": "windows | osx"},
     "shaderc",
     "spirv-cross",
     "spirv-tools",
     "box2d",
-    "nethost"
+    "nethost",
+    "libnoise",
+    "marchingcubecpp"
   ]
 }

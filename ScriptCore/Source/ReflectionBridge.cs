@@ -131,11 +131,25 @@ namespace Himii
             string fieldName = Marshal.PtrToStringUTF8(fieldNamePtr);
             FieldInfo field = instance.GetType().GetField(fieldName);
 
-            if (field != null && field.FieldType == typeof(T))
+            if (field == null)
+                return false;
+
+            // 1. 精确类型匹配（float、int、bool、Vector 等）
+            if (field.FieldType == typeof(T))
             {
                 value = (T)field.GetValue(instance);
                 return true;
             }
+
+            // 2. 枚举类型：允许用 int 在 C++ 侧读写 enum（用于 KeyCode 等）
+            if (field.FieldType.IsEnum && typeof(T) == typeof(int))
+            {
+                int raw = Convert.ToInt32(field.GetValue(instance));
+                object boxed = raw;
+                value = (T)boxed;
+                return true;
+            }
+
             return false;
         }
 
@@ -148,9 +162,22 @@ namespace Himii
             string fieldName = Marshal.PtrToStringUTF8(fieldNamePtr);
             FieldInfo field = instance.GetType().GetField(fieldName);
 
-            if (field != null && field.FieldType == typeof(T))
+            if (field == null)
+                return;
+
+            // 1. 精确类型匹配
+            if (field.FieldType == typeof(T))
             {
                 field.SetValue(instance, value);
+                return;
+            }
+
+            // 2. 枚举：允许通过 int 写入 enum（KeyCode）
+            if (field.FieldType.IsEnum && typeof(T) == typeof(int))
+            {
+                int raw = (int)(object)value;
+                object enumValue = Enum.ToObject(field.FieldType, raw);
+                field.SetValue(instance, enumValue);
             }
         }
 
@@ -193,6 +220,55 @@ namespace Himii
             {
                 Console.WriteLine($"[C#] Serialize Error: {ex.Message}");
                 return IntPtr.Zero;
+            }
+        }
+
+        // --- String ---
+        [UnmanagedCallersOnly]
+        public static IntPtr GetString(IntPtr instanceHandle, IntPtr fieldNamePtr)
+        {
+            try
+            {
+                GCHandle handle = GCHandle.FromIntPtr(instanceHandle);
+                object instance = handle.Target;
+                if (instance == null) return IntPtr.Zero;
+
+                string fieldName = Marshal.PtrToStringUTF8(fieldNamePtr);
+                FieldInfo field = instance.GetType().GetField(fieldName);
+                if (field == null || field.FieldType != typeof(string))
+                    return IntPtr.Zero;
+
+                string value = (string)field.GetValue(instance) ?? string.Empty;
+                return Marshal.StringToCoTaskMemUTF8(value);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"[C# Error] GetString failed: {e.Message}");
+                return IntPtr.Zero;
+            }
+        }
+
+        [UnmanagedCallersOnly]
+        public static void SetString(IntPtr instanceHandle, IntPtr fieldNamePtr, IntPtr valuePtr)
+        {
+            try
+            {
+                GCHandle handle = GCHandle.FromIntPtr(instanceHandle);
+                object instance = handle.Target;
+                if (instance == null) return;
+
+                string fieldName = Marshal.PtrToStringUTF8(fieldNamePtr);
+                string value = Marshal.PtrToStringUTF8(valuePtr) ?? string.Empty;
+
+                FieldInfo field = instance.GetType().GetField(fieldName);
+                if (field != null && field.FieldType == typeof(string))
+                {
+                    field.SetValue(instance, value);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"[C# Error] SetString failed: {e.Message}");
             }
         }
 

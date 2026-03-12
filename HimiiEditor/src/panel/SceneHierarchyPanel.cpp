@@ -676,6 +676,105 @@ namespace Himii
                                          ScriptEngine::SetVector4(ScriptEngine::GetEntityScriptInstance(entity.GetUUID()), name, data);
                                      }
                                  }
+                                // String
+                                else if (field.Type == ScriptFieldType::String)
+                                {
+                                    std::string data = field.GetValue<std::string>();
+                                    std::string oldData = data;
+
+                                    ImGui::PushID(name.c_str());
+                                    if (ImGui::BeginTable("##StringControl", 2, ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchProp))
+                                    {
+                                        ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 140.0f);
+                                        ImGui::TableSetupColumn("Value");
+                                        ImGui::TableNextColumn();
+                                        ImGui::Text("%s", name.c_str());
+                                        ImGui::TableNextColumn();
+                                        ImGui::PushItemWidth(-1);
+
+                                        char buffer[256];
+                                        memset(buffer, 0, sizeof(buffer));
+                                        strncpy_s(buffer, sizeof(buffer), data.c_str(), sizeof(buffer) - 1);
+
+                                        if (ImGui::InputText("##Value", buffer, sizeof(buffer)))
+                                        {
+                                            data = std::string(buffer);
+                                        }
+
+                                        ImGui::PopItemWidth();
+                                        ImGui::EndTable();
+                                    }
+                                    ImGui::PopID();
+
+                                    if (data != oldData)
+                                    {
+                                        field.SetValue(data);
+                                        ScriptEngine::SetString(ScriptEngine::GetEntityScriptInstance(entity.GetUUID()), name, data);
+                                    }
+                                }
+                                // KeyCode (以 int 形式保存，在 UI 中用下拉列表编辑常用按键)
+                                else if (field.Type == ScriptFieldType::KeyCode)
+                                {
+                                    int data = field.GetValue<int>();
+
+                                    ImGui::PushID(name.c_str());
+                                    if (ImGui::BeginTable("##KeyCodeControl", 2, ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchProp))
+                                    {
+                                        ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 140.0f);
+                                        ImGui::TableSetupColumn("Value");
+                                        ImGui::TableNextColumn();
+                                        ImGui::Text("%s", name.c_str());
+                                        ImGui::TableNextColumn();
+                                        ImGui::PushItemWidth(-1);
+
+                                        struct KeyCodeOption { int Code; const char* Label; };
+                                        static KeyCodeOption options[] = {
+                                            { 32,  "Space" },
+                                            { 65,  "A" },
+                                            { 68,  "D" },
+                                            { 83,  "S" },
+                                            { 87,  "W" },
+                                            { 262, "Right" },
+                                            { 263, "Left" },
+                                            { 264, "Down" },
+                                            { 265, "Up" },
+                                            { 257, "Enter" }
+                                        };
+
+                                        const char* currentLabel = "Unknown";
+                                        int currentIndex = -1;
+                                        for (int i = 0; i < (int)std::size(options); ++i)
+                                        {
+                                            if (options[i].Code == data)
+                                            {
+                                                currentLabel = options[i].Label;
+                                                currentIndex = i;
+                                                break;
+                                            }
+                                        }
+
+                                        if (ImGui::BeginCombo("##Value", currentLabel))
+                                        {
+                                            for (int i = 0; i < (int)std::size(options); ++i)
+                                            {
+                                                bool isSelected = (i == currentIndex);
+                                                if (ImGui::Selectable(options[i].Label, isSelected))
+                                                {
+                                                    data = options[i].Code;
+                                                    field.SetValue(data);
+                                                    ScriptEngine::SetInt(ScriptEngine::GetEntityScriptInstance(entity.GetUUID()), name, data);
+                                                }
+                                                if (isSelected)
+                                                    ImGui::SetItemDefaultFocus();
+                                            }
+                                            ImGui::EndCombo();
+                                        }
+
+                                        ImGui::PopItemWidth();
+                                        ImGui::EndTable();
+                                    }
+                                    ImGui::PopID();
+                                }
                              }
                         }
                     }

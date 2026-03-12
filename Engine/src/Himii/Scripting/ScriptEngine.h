@@ -16,14 +16,36 @@ namespace Himii {
 
     enum class ScriptFieldType
     {
-        None = 0, Float, Double, Bool, Char, Byte, Short, Int, Long, UByte, UShort, UInt, ULong, Vector2, Vector3, Vector4, Entity
+        None = 0,
+        Float,
+        Double,
+        Bool,
+        Char,
+        Byte,
+        Short,
+        Int,
+        Long,
+        UByte,
+        UShort,
+        UInt,
+        ULong,
+        Vector2,
+        Vector3,
+        Vector4,
+        Entity,
+        String,
+        KeyCode
     };
 
     struct ScriptFieldInstance
     {
         ScriptFieldType Type = ScriptFieldType::None;
 
+        // 对于数值和向量类型，直接存放在固定大小的缓冲区中。
         uint8_t m_Buffer[16];
+
+        // 对于字符串，我们单独存储，避免固定缓冲区限制。
+        std::string StringValue;
 
         template<typename T>
         T GetValue() const
@@ -39,6 +61,19 @@ namespace Himii {
             memcpy(m_Buffer, &value, sizeof(T));
         }
     };
+
+    // 针对 std::string 的特化：绕过固定缓冲区，直接使用 StringValue
+    template<>
+    inline std::string ScriptFieldInstance::GetValue<std::string>() const
+    {
+        return StringValue;
+    }
+
+    template<>
+    inline void ScriptFieldInstance::SetValue<std::string>(std::string value)
+    {
+        StringValue = std::move(value);
+    }
 
     using ScriptFieldMap = std::unordered_map<std::string, ScriptFieldInstance>;
 
@@ -83,6 +118,9 @@ namespace Himii {
         static void SetVector3(void *instanceHandle, const std::string &fieldName, const glm::vec3 &value);
         static bool GetVector4(void *instanceHandle, const std::string &fieldName, glm::vec4 &outValue);
         static void SetVector4(void *instanceHandle, const std::string &fieldName, const glm::vec4 &value);
+
+        static bool GetString(void *instanceHandle, const std::string &fieldName, std::string &outValue);
+        static void SetString(void *instanceHandle, const std::string &fieldName, const std::string &value);
 
         static void* GetEntityScriptInstance(UUID entityID);
 

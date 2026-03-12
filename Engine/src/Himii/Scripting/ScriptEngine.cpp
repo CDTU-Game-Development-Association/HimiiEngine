@@ -64,6 +64,10 @@ namespace Himii
     typedef int(CORECLR_DELEGATE_CALLTYPE *GetVec4Fn)(void *handle, const char *name, glm::vec4 *out);
     typedef void(CORECLR_DELEGATE_CALLTYPE *SetVec4Fn)(void *handle, const char *name, glm::vec4 *val);
 
+    // String 通过 UTF-8 C 字符串进行互操作
+    typedef const char *(CORECLR_DELEGATE_CALLTYPE *GetStringFn)(void *handle, const char *name);
+    typedef void(CORECLR_DELEGATE_CALLTYPE *SetStringFn)(void *handle, const char *name, const char *value);
+
     static LoadAssemblyFn s_LoadGameAssembly = nullptr;
     static ClassExistsFn s_EntityClassExists = nullptr;
     static OnCreateFn s_OnCreate = nullptr;
@@ -87,6 +91,9 @@ namespace Himii
     static SetVec3Fn s_SetVec3 = nullptr;
     static GetVec4Fn s_GetVec4 = nullptr;
     static SetVec4Fn s_SetVec4 = nullptr;
+
+    static GetStringFn s_GetString = nullptr;
+    static SetStringFn s_SetString = nullptr;
 
     // 加载 hostfxr 库
     static bool LoadHostFxr()
@@ -271,6 +278,11 @@ namespace Himii
                                                UNMANAGEDCALLERSONLY_METHOD, nullptr, (void **)&s_GetVec4);
         load_assembly_and_get_function_pointer(filepath.c_str(), bridge_type, STR("SetVector4"),
                                                UNMANAGEDCALLERSONLY_METHOD, nullptr, (void **)&s_SetVec4);
+
+        load_assembly_and_get_function_pointer(filepath.c_str(), bridge_type, STR("GetString"),
+                                               UNMANAGEDCALLERSONLY_METHOD, nullptr, (void **)&s_GetString);
+        load_assembly_and_get_function_pointer(filepath.c_str(), bridge_type, STR("SetString"),
+                                               UNMANAGEDCALLERSONLY_METHOD, nullptr, (void **)&s_SetString);
     }
 
     void ScriptEngine::CompileAndReloadAppAssembly(const std::filesystem::path &projectPath)
@@ -367,6 +379,16 @@ namespace Himii
                     {
                         glm::vec4 value = field.GetValue<glm::vec4>();
                         SetVector4(instance, name, value);
+                    }
+                    else if (field.Type == ScriptFieldType::String)
+                    {
+                        std::string value = field.GetValue<std::string>();
+                        SetString(instance, name, value);
+                    }
+                    else if (field.Type == ScriptFieldType::KeyCode)
+                    {
+                        int value = field.GetValue<int>();
+                        SetInt(instance, name, value);
                     }
                 }
             }
@@ -465,7 +487,9 @@ namespace Himii
                     else if (typeStr == "Vector2") type = ScriptFieldType::Vector2;
                     else if (typeStr == "Vector3") type = ScriptFieldType::Vector3;
                     else if (typeStr == "Vector4") type = ScriptFieldType::Vector4;
-                    else if (typeStr == "Entity") type = ScriptFieldType::Entity; 
+                    else if (typeStr == "Entity") type = ScriptFieldType::Entity;
+                    else if (typeStr == "String") type = ScriptFieldType::String;
+                    else if (typeStr == "KeyCode") type = ScriptFieldType::KeyCode;
 
                     if (type != ScriptFieldType::None)
                     {
@@ -527,13 +551,25 @@ namespace Himii
                                  glm::vec4 val; GetVector4(instance, name, val);
                                  fieldInst.SetValue(val);
                              }
-                              else if (type == ScriptFieldType::Entity)
+                             else if (type == ScriptFieldType::Entity)
                              {
                                  // Entity is referenced by UUID (uint64_t) in serialization?
                                  // Or fieldInst.SetValue<uint64_t>(id)?
                                  // We need to implement GetEntity field getter if we support it.
                                  // For now just ignore value or set to 0.
                                  // ScriptFieldInstance buffer is 16 bytes, can hold UUID.
+                             }
+                             else if (type == ScriptFieldType::String)
+                             {
+                                 std::string value;
+                                 GetString(instance, name, value);
+                                 fieldInst.SetValue(std::move(value));
+                             }
+                             else if (type == ScriptFieldType::KeyCode)
+                             {
+                                 int code = 0;
+                                 GetInt(instance, name, code);
+                                 fieldInst.SetValue(code);
                              }
 
                              newFields[name] = fieldInst;
@@ -667,6 +703,31 @@ namespace Himii
         glm::vec4 temp = value;
         if (s_SetVec4 && instanceHandle)
             s_SetVec4(instanceHandle, fieldName.c_str(), &temp);
+    }
+
+    bool ScriptEngine::GetString(void *instanceHandle, const std::string &fieldName, std::string &outValue)
+    {
+        if (s_GetString && instanceHandle)
+        {
+            const char *str = s_GetString(instanceHandle, fieldName.c_str());
+            if (str)
+            {
+                outValue = str;
+#ifdef WIN32
+                CoTaskMemFree((LPVOID)str);
+#endif
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void ScriptEngine::SetString(void *instanceHandle, const std::string &fieldName, const std::string &value)
+    {
+        if (s_SetString && instanceHandle)
+        {
+            s_SetString(instanceHandle, fieldName.c_str(), value.c_str());
+        }
     }
 
     void *ScriptEngine::GetEntityScriptInstance(UUID entityID)

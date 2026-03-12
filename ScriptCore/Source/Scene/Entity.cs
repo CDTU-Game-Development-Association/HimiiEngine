@@ -69,8 +69,10 @@ namespace Himii
 
         public bool HasComponent<T>() where T : Component, new()
         {
-            int hashCode = typeof(T).FullName.GetHashCode();
-            return InternalCalls.Entity_HasComponent(ID, hashCode);
+            // 不要用 string.GetHashCode：.NET 的字符串哈希在不同进程/不同运行中可能不同（安全随机化）
+            // 我们用稳定的 FNV-1a 32-bit，把类型全名映射成跨语言一致的 ID
+            int typeId = HashUtils.Fnv1A32(typeof(T).FullName);
+            return InternalCalls.Entity_HasComponent(ID, typeId) != 0;
         }
 
         public T GetComponent<T>() where T : Component, new()

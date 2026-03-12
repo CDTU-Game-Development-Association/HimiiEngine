@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.InteropServices;
 
 namespace Himii
@@ -8,7 +8,9 @@ namespace Himii
         // delegate definitions
         internal delegate void LogFuncDelegate(IntPtr msg);
 
-        internal delegate bool EntityHasComponentDelegate(ulong entityID, int typeHashCode);
+        // Interop 注意：不要直接用 bool 作为返回值（跨语言 ABI 容易踩坑）
+        // 这里用 byte (0/1) 更稳
+        internal delegate byte EntityHasComponentDelegate(ulong entityID, int typeHashCode);
         internal delegate ulong SceneCreateEntityDelegate(IntPtr name);
         internal delegate void SceneDestroyEntityDelegate(ulong entityID);
         internal delegate ulong SceneFindEntityDelegate(IntPtr name);
