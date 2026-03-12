@@ -31,6 +31,13 @@ namespace Himii
             return h;
         }
 
+        AssetHandle GetParticleEmitterEditorRequest()
+        {
+            AssetHandle h = m_ParticleEmitterEditorRequest;
+            m_ParticleEmitterEditorRequest = 0;
+            return h;
+        }
+
     private:
         template<typename T>
         void DisplayAddComponentEntry(const std::string &entryName);
@@ -43,5 +50,6 @@ namespace Himii
         Entity m_SelectionContext;
         std::unordered_map<std::string, Ref<Texture2D>> m_ComponentIcons;
         AssetHandle m_TileMapEditorRequest = 0;
+        AssetHandle m_ParticleEmitterEditorRequest = 0;
     };
 }

@@ -4,6 +4,7 @@
 #include "panel/ContentBrowserPanel.h"
 #include "panel/AnimationPanel.h"
 #include "panel/TileMapEditorPanel.h"
+#include "panel/ParticleEmitterEditorPanel.h"
 
 #include "Himii/Renderer/EditorCamera.h"
 
@@ -96,6 +97,9 @@ namespace Himii
 
         TileMapEditorPanel m_TileMapEditorPanel;
         bool m_ShowTileMapEditor = false;
+
+        ParticleEmitterEditorPanel m_ParticleEmitterEditorPanel;
+        bool m_ShowParticleEmitterEditor = false;
 
         Ref<Texture2D> m_IconPlay, m_IconStop, m_IconSimulate;
         Ref<TextureCube> m_SkyboxTexture;

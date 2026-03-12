@@ -194,14 +194,13 @@ namespace Himii
     {
         HIMII_PROFILE_FUNCTION();
 
+        // 保持对正交相机的直接 uniform 支持，方便简单 2D 场景使用
         s_Data.QuadShader->Bind();
         s_Data.QuadShader->SetMat4("u_ViewProjection", camera.GetViewProjectionMatrix());
         s_Data.QuadShader->SetMat4("u_Transform", glm::mat4(1.0f));
 
-        s_Data.QuadIndexCount = 0;
-        s_Data.QuadVertexBufferPtr = s_Data.QuadVertexBufferBase;
-
-        s_Data.TextureSlotIndex = 1;
+        // 统一批次初始化逻辑
+        StartBatch();
     }
 
     void Renderer2D::BeginScene(const EditorCamera& camera)
@@ -229,9 +228,6 @@ namespace Himii
     void Renderer2D::EndScene()
     {
         HIMII_PROFILE_FUNCTION();
-
-        uint32_t dataSize = (uint8_t *)s_Data.QuadVertexBufferPtr - (uint8_t *)s_Data.QuadVertexBufferBase;
-        s_Data.QuadVertexBuffer->SetData(s_Data.QuadVertexBufferBase, dataSize);
 
         Flush();
     }
@@ -486,7 +482,7 @@ namespace Himii
                                 int entityID)
     {
         HIMII_PROFILE_FUNCTION();
-        if (s_Data.QuadIndexCount >= Renderer2DData::MaxIndices)
+        if (NeedsNewBatch(4, 6))
             NextBatch();
 
         float textureIndex = 0.0f;
@@ -588,6 +584,10 @@ namespace Himii
     {
         HIMII_PROFILE_FUNCTION();
 
+        // Circle 也通过批次渲染，确保不会溢出缓冲
+        if (NeedsNewBatch(4, 6))
+            NextBatch();
+
         for (size_t i = 0; i < 4; i++)
         {
             s_Data.CircleVertexBufferPtr->WorldPosition = transform * s_Data.QuadVertexPositions[i];
@@ -601,11 +601,16 @@ namespace Himii
 
         s_Data.CircleIndexCount += 6;
 
+        // Circle 使用 Quad 批渲染，统计上仍然归入 QuadCount
         s_Data.Stats.QuadCount++;
     }
 
     void Renderer2D::DrawLine(const glm::vec3 &p0, const glm::vec3 &p1, const glm::vec4 &color, int entityID)
     {
+        // 确保线段批次不会超过最大顶点数量
+        if (s_Data.LineVertexCount + 2 > Renderer2DData::MaxVertices)
+            NextBatch();
+
         s_Data.LineVertexBufferPtr->Position = p0;
         s_Data.LineVertexBufferPtr->Color = color;
         s_Data.LineVertexBufferPtr->EntityID = entityID;
@@ -617,6 +622,7 @@ namespace Himii
         s_Data.LineVertexBufferPtr++;
 
         s_Data.LineVertexCount += 2;
+        s_Data.Stats.LineVertexCount += 2;
     }
 
     void Renderer2D::DrawRect(const glm::vec3 &position, const glm::vec2 &size, const glm::vec4 &color, int entityID)

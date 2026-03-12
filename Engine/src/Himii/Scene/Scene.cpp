@@ -10,6 +10,7 @@
 #include "Himii/Scene/SpriteAnimation.h"
 #include "Himii/Scene/TileSet.h"
 #include "Himii/Scene/TileMapData.h"
+#include "Himii/Scene/ParticleEmitterAsset.h"
 #include "Himii/Scripting/ScriptEngine.h"
 #include "ScriptableEntity.h"
 
@@ -224,6 +225,39 @@ namespace Himii
             }
         }
 
+        // 粒子发射器：按资源与 Transform 发射，再统一更新粒子系统
+        if (Project::GetActive())
+        {
+            auto assetManager = Project::GetAssetManager();
+            if (assetManager)
+            {
+                auto view = m_Registry.view<TransformComponent, ParticleEmitterComponent>();
+                for (auto e : view)
+                {
+                    auto [transform, emitter] = view.get<TransformComponent, ParticleEmitterComponent>(e);
+                    if (emitter.EmitterHandle == 0) continue;
+
+                    Ref<Asset> assetRef = assetManager->GetAsset(emitter.EmitterHandle);
+                    if (!assetRef) continue;
+
+                    auto emitterAsset = std::static_pointer_cast<ParticleEmitterAsset>(assetRef);
+                    if (!emitterAsset) continue;
+
+                    emitter.EmissionAccumulator += ts * emitterAsset->EmissionRate;
+                    int emitCount = static_cast<int>(std::floor(emitter.EmissionAccumulator));
+                    if (emitCount <= 0) continue;
+
+                    emitter.EmissionAccumulator -= static_cast<float>(emitCount);
+                    ParticleProps props = emitterAsset->TemplateProps;
+                    props.position = glm::vec3(transform.Position.x, transform.Position.y, 0.0f);
+
+                    for (int i = 0; i < emitCount; ++i)
+                        m_ParticleSystem.Emit(props);
+                }
+            }
+        }
+        m_ParticleSystem.OnUpdate(ts);
+
         Camera *mainCamera = nullptr;
         glm::mat4 cameraTransform{1.0f};
         {
@@ -280,6 +314,17 @@ namespace Himii
                                                           circle.Fade, (int)entity);
                         });
             }
+            // 粒子系统 2D 渲染（与 Renderer2D 同批次）
+            m_ParticleSystem.ForEachAlive([&](const ParticleSystem::ParticleView& p)
+            {
+                float t = 1.0f - p.remainingLife / p.lifetime;
+                glm::vec4 color = glm::mix(p.colorBegin, p.colorEnd, t);
+                float size = glm::mix(p.sizeBegin, p.sizeEnd, t);
+                glm::mat4 transform = glm::translate(glm::mat4(1.0f), p.position)
+                    * glm::rotate(glm::mat4(1.0f), p.rotation, glm::vec3(0, 0, 1))
+                    * glm::scale(glm::mat4(1.0f), glm::vec3(size));
+                Renderer2D::DrawQuad(transform, color);
+            });
             Renderer2D::EndScene();
         }
 
@@ -450,6 +495,7 @@ namespace Himii
         CopyComponent<SpriteAnimationComponent>(dstSceneRegistry, srcSceneRegistry, enttMap);
         CopyComponent<MeshComponent>(dstSceneRegistry, srcSceneRegistry, enttMap);
         CopyComponent<TilemapComponent>(dstSceneRegistry, srcSceneRegistry, enttMap);
+        CopyComponent<ParticleEmitterComponent>(dstSceneRegistry, srcSceneRegistry, enttMap);
 
         return newScene;
     }
@@ -494,6 +540,8 @@ namespace Himii
 
         if (entity.HasComponent<TilemapComponent>())
             newEntity.AddComponent<TilemapComponent>(entity.GetComponent<TilemapComponent>());
+        if (entity.HasComponent<ParticleEmitterComponent>())
+            newEntity.AddComponent<ParticleEmitterComponent>(entity.GetComponent<ParticleEmitterComponent>());
 
         return newEntity;
     }
@@ -794,6 +842,10 @@ namespace Himii
 
     template<>
     void Scene::OnComponentAdded<TilemapComponent>(Entity entity, TilemapComponent &component)
+    {
+    }
+    template<>
+    void Scene::OnComponentAdded<ParticleEmitterComponent>(Entity entity, ParticleEmitterComponent &component)
     {
     }
 

@@ -4,6 +4,7 @@
 #include "Himii/Scripting/ScriptEngine.h"
 #include "Himii/Scene/TileSet.h"
 #include "Himii/Scene/TileMapData.h"
+#include "Himii/Scene/ParticleEmitterAsset.h"
 #include "Himii/Asset/AssetSerializer.h"
 
 #include <imgui.h>
@@ -407,6 +408,7 @@ namespace Himii
             DisplayAddComponentEntry<SpriteAnimationComponent>("Sprite Animation");
             DisplayAddComponentEntry<MeshComponent>("Mesh Renderer");
             DisplayAddComponentEntry<TilemapComponent>("Tilemap");
+            DisplayAddComponentEntry<ParticleEmitterComponent>("Particle Emitter");
 
             ImGui::EndPopup();
         }
@@ -1200,6 +1202,66 @@ namespace Himii
                                 component.TileMapHandle = 0;
                             }
                         }
+                    }
+                });
+
+        DrawComponent<ParticleEmitterComponent>(
+                "Particle Emitter", entity, nullptr,
+                [this](auto &component)
+                {
+                    auto assetManager = Project::GetAssetManager();
+                    ImGui::PushID("ParticleEmitterHandle");
+                    std::string label = "None (drag .particle)";
+                    if (component.EmitterHandle != 0 && assetManager && assetManager->IsAssetHandleValid(component.EmitterHandle))
+                        label = "Emitter: " + std::to_string((uint64_t)component.EmitterHandle);
+                    ImGui::Button(label.c_str(), ImVec2(-1, 0.0f));
+                    if (ImGui::BeginDragDropTarget())
+                    {
+                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+                        {
+                            const wchar_t* path = (const wchar_t*)payload->Data;
+                            std::filesystem::path assetPath(path);
+                            if (assetPath.extension() == ".particle" && assetManager)
+                            {
+                                AssetHandle handle = assetManager->ImportAsset(assetPath);
+                                if (handle != 0)
+                                    component.EmitterHandle = handle;
+                            }
+                        }
+                        ImGui::EndDragDropTarget();
+                    }
+                    ImGui::PopID();
+                    if (component.EmitterHandle == 0 && assetManager)
+                    {
+                        ImGui::Spacing();
+                        if (ImGui::Button("Create New Particle Emitter", ImVec2(-1, 0)))
+                        {
+                            auto assetDir = Project::GetAssetDirectory();
+                            std::filesystem::path dir = assetDir / "particles";
+                            std::filesystem::create_directories(dir);
+                            std::filesystem::path path = dir / "new_emitter.particle";
+                            int idx = 0;
+                            while (std::filesystem::exists(path))
+                                path = dir / ("new_emitter_" + std::to_string(++idx) + ".particle");
+                            auto emitterAsset = std::make_shared<ParticleEmitterAsset>();
+                            emitterAsset->Handle = AssetHandle();
+                            ParticleEmitterAssetSerializer::Serialize(path, emitterAsset);
+                            auto relPath = std::filesystem::relative(path, assetDir);
+                            AssetHandle handle = assetManager->ImportAsset(relPath);
+                            if (handle != 0)
+                            {
+                                component.EmitterHandle = handle;
+                                emitterAsset->Handle = handle;
+                                ParticleEmitterAssetSerializer::Serialize(path, emitterAsset);
+                                assetManager->SerializeAssetRegistry();
+                            }
+                        }
+                    }
+                    if (component.EmitterHandle != 0 && assetManager && assetManager->IsAssetHandleValid(component.EmitterHandle))
+                    {
+                        ImGui::Spacing();
+                        if (ImGui::Button("Open in Particle Emitter Editor", ImVec2(-1, 0)))
+                            m_ParticleEmitterEditorRequest = component.EmitterHandle;
                     }
                 });
     }

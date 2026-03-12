@@ -261,6 +261,7 @@ namespace Himii
                 {
                     ImGui::MenuItem("Animation Editor", nullptr, &m_ShowAnimationPanel);
                     ImGui::MenuItem("TileMap Editor", nullptr, &m_ShowTileMapEditor);
+                    ImGui::MenuItem("Particle Emitter Editor", nullptr, &m_ShowParticleEmitterEditor);
                     ImGui::MenuItem("Show Grid", nullptr, &m_ShowGrid);
                     ImGui::EndMenu();
                 }
@@ -272,13 +273,19 @@ namespace Himii
             m_ContentBrowserPanel.OnImGuiRender();
             m_AnimationPanel.OnImGuiRender(m_ShowAnimationPanel);
             m_TileMapEditorPanel.OnImGuiRender(m_ShowTileMapEditor);
+            m_ParticleEmitterEditorPanel.OnImGuiRender(m_ShowParticleEmitterEditor);
 
-            // Check if SceneHierarchyPanel requested opening a TileMap in the editor
             AssetHandle tmEditorRequest = m_SceneHierarchyPanel.GetTileMapEditorRequest();
             if (tmEditorRequest != 0)
             {
                 m_ShowTileMapEditor = true;
                 m_TileMapEditorPanel.Open(tmEditorRequest);
+            }
+            AssetHandle peEditorRequest = m_SceneHierarchyPanel.GetParticleEmitterEditorRequest();
+            if (peEditorRequest != 0)
+            {
+                m_ShowParticleEmitterEditor = true;
+                m_ParticleEmitterEditorPanel.Open(peEditorRequest);
             }
 
             

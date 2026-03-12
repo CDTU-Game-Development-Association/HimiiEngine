@@ -4,9 +4,17 @@
 #include "Himii/Scene/SpriteAnimation.h"
 #include "Himii/Scene/TileSet.h"
 #include "Himii/Scene/TileMapData.h"
+#include "Himii/Scene/ParticleEmitterAsset.h"
 
 namespace Himii
 {
+
+    class ParticleEmitterAssetSerializer
+    {
+    public:
+        static void Serialize(const std::filesystem::path& filepath, const Ref<ParticleEmitterAsset>& asset);
+        static Ref<ParticleEmitterAsset> Deserialize(const std::filesystem::path& filepath);
+    };
 
     class SpriteAnimationSerializer {
     public:

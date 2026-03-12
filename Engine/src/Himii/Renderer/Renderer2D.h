@@ -72,6 +72,8 @@ namespace Himii
         struct Statistics {
             uint32_t DrawCalls = 0;
             uint32_t QuadCount = 0;
+            // Circle 也是用 Quad 批渲染，这里不单独计数
+            uint32_t LineVertexCount = 0;
 
             uint32_t GetTotalVertexCount() const
             {
@@ -80,6 +82,11 @@ namespace Himii
             uint32_t GetTotalIndexCount() const
             {
                 return QuadCount * 6;
+            }
+
+            uint32_t GetLineCount() const
+            {
+                return LineVertexCount / 2;
             }
         };
 

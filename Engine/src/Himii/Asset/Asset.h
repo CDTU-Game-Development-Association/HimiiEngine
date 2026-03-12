@@ -15,7 +15,8 @@ namespace Himii {
         Texture2D,
         SpriteAnimation,
         TileSet,
-        TileMap
+        TileMap,
+        ParticleEmitter
     };
 
     class Asset {
@@ -36,6 +37,7 @@ namespace Himii {
                 case AssetType::SpriteAnimation: return "SpriteAnimation";
                 case AssetType::TileSet:         return "TileSet";
                 case AssetType::TileMap:         return "TileMap";
+                case AssetType::ParticleEmitter: return "ParticleEmitter";
             }
             return "None";
         }
@@ -48,6 +50,7 @@ namespace Himii {
             if (assetType == "SpriteAnimation") return AssetType::SpriteAnimation;
             if (assetType == "TileSet")         return AssetType::TileSet;
             if (assetType == "TileMap")         return AssetType::TileMap;
+            if (assetType == "ParticleEmitter") return AssetType::ParticleEmitter;
 
             return AssetType::None;
         }

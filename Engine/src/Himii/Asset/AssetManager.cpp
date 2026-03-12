@@ -53,6 +53,11 @@ namespace Himii
                 asset = TileMapDataSerializer::Deserialize(pathString);
                 break;
             }
+            case AssetType::ParticleEmitter:
+            {
+                asset = ParticleEmitterAssetSerializer::Deserialize(pathString);
+                break;
+            }
             case AssetType::None:
             default:
                 break;
@@ -126,6 +131,8 @@ namespace Himii
             return AssetType::TileSet;
         if (ext == ".tilemap")
             return AssetType::TileMap;
+        if (ext == ".particle")
+            return AssetType::ParticleEmitter;
 
         return AssetType::None;
     }

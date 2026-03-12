@@ -298,6 +298,14 @@ namespace Himii
             out << YAML::Key << "TileMapHandle" << YAML::Value << (uint64_t)tm.TileMapHandle;
             out << YAML::EndMap;
         }
+        if (entity.HasComponent<ParticleEmitterComponent>())
+        {
+            out << YAML::Key << "ParticleEmitterComponent";
+            out << YAML::BeginMap;
+            auto &pe = entity.GetComponent<ParticleEmitterComponent>();
+            out << YAML::Key << "EmitterHandle" << YAML::Value << (uint64_t)pe.EmitterHandle;
+            out << YAML::EndMap;
+        }
         out << YAML::EndMap;
     }
 
@@ -523,6 +531,14 @@ namespace Himii
             auto &tm = deserializedEntity.AddComponent<TilemapComponent>();
             if (tilemapComponent["TileMapHandle"])
                 tm.TileMapHandle = tilemapComponent["TileMapHandle"].as<uint64_t>();
+        }
+
+        auto particleEmitterComponent = entity["ParticleEmitterComponent"];
+        if (particleEmitterComponent)
+        {
+            auto &pe = deserializedEntity.AddComponent<ParticleEmitterComponent>();
+            if (particleEmitterComponent["EmitterHandle"])
+                pe.EmitterHandle = particleEmitterComponent["EmitterHandle"].as<uint64_t>();
         }
     }
     

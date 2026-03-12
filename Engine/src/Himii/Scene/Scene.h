@@ -10,6 +10,7 @@
 #include "Himii/Renderer/Texture.h"
 
 #include "box2d/box2d.h"
+#include "Himii/Particle/ParticleSystem.h"
 
 namespace Himii
 {
@@ -108,5 +109,7 @@ namespace Himii
         Ref<TextureCube> m_SkyboxTexture;
 
         b2WorldId m_Box2DWorld;
+
+        ParticleSystem m_ParticleSystem{ 50000 };
     };
 }

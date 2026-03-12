@@ -196,4 +196,15 @@ namespace Himii
         TilemapComponent() = default;
         TilemapComponent(const TilemapComponent&) = default;
     };
+
+    struct ParticleEmitterComponent
+    {
+        AssetHandle EmitterHandle = 0;
+
+        // 运行时发射累计时间，不序列化
+        float EmissionAccumulator = 0.0f;
+
+        ParticleEmitterComponent() = default;
+        ParticleEmitterComponent(const ParticleEmitterComponent&) = default;
+    };
 }
