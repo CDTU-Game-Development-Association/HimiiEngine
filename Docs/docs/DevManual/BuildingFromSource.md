@@ -102,7 +102,7 @@ Release 下编辑器目标在 CMake 中仍名为 `HimiiEditor`，输出文件名
 | Release Editor | **胖** `HimiiEngine/engine.hpck`（shaders + fonts + resources） | `HimiiEngine/` 子目录 |
 | Release Runtime / Templates | **瘦** `HimiiEngine/engine.hpck`（仅 shaders） | `HimiiEngine/` 子目录 |
 
-Release 分发目录结构（Godot 式顶层入口 + Export Templates）：
+Release 分发目录结构：
 
 ```text
 HimiiEngine.exe
