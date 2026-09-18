@@ -311,7 +311,10 @@ namespace Himii
                         case ScriptFieldType::Vector2: out << field.GetValue<glm::vec2>(); break;
                         case ScriptFieldType::Vector3: out << field.GetValue<glm::vec3>(); break;
                         case ScriptFieldType::Vector4: out << field.GetValue<glm::vec4>(); break;
-                        case ScriptFieldType::Entity: out << field.GetValue<UUID>(); break;
+                        case ScriptFieldType::Entity:
+                        case ScriptFieldType::Button:
+                            out << field.GetValue<UUID>();
+                            break;
                         case ScriptFieldType::String: out << field.GetValue<std::string>(); break;
                         case ScriptFieldType::KeyCode: out << field.GetValue<int>(); break;
                     }
@@ -716,7 +719,10 @@ namespace Himii
                         case ScriptFieldType::Vector2: fieldInstance.SetValue(scriptField["Data"].as<glm::vec2>()); break;
                         case ScriptFieldType::Vector3: fieldInstance.SetValue(scriptField["Data"].as<glm::vec3>()); break;
                         case ScriptFieldType::Vector4: fieldInstance.SetValue(scriptField["Data"].as<glm::vec4>()); break;
-                        case ScriptFieldType::Entity: fieldInstance.SetValue(scriptField["Data"].as<UUID>()); break;
+                        case ScriptFieldType::Entity:
+                        case ScriptFieldType::Button:
+                            fieldInstance.SetValue(scriptField["Data"].as<UUID>());
+                            break;
                         case ScriptFieldType::String: fieldInstance.SetValue(scriptField["Data"].as<std::string>()); break;
                         case ScriptFieldType::KeyCode: fieldInstance.SetValue(scriptField["Data"].as<int>()); break;
                     }

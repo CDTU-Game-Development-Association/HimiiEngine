@@ -443,7 +443,11 @@ namespace Himii
         m_Framebuffer->Unbind();
 
         m_SceneDisplayFramebuffer->Bind();
-        SceneColorResolvePass::Resolve(m_Framebuffer, ResolvePrimaryCameraExposure());
+        SceneColorResolvePass::Resolve(
+                m_Framebuffer, ResolvePrimaryCameraExposure(),
+                SceneColorResolvePass::SelectEncoding(
+                        Project::GetActive() && Project::GetConfig().Is2D,
+                        m_EditorCamera.IsOrthographicProjection()));
         RenderCommand::ClearDepth();
         // 相机/画布调试边界始终在 LDR 上绘制；屏幕 UI 元素由开关控制。
         m_ActiveScene->RenderUIInEditor(m_EditorCamera, m_ShowSceneUserInterface);
@@ -519,8 +523,20 @@ namespace Himii
         }
         m_GameFramebuffer->Unbind();
 
+        bool gameCameraIsOrthographic = false;
+        if (primaryCameraEntity && primaryCameraEntity.HasComponent<CameraComponent>())
+        {
+            gameCameraIsOrthographic =
+                    primaryCameraEntity.GetComponent<CameraComponent>().Camera.GetProjectionType()
+                    == SceneCamera::ProjectionType::Orthographic;
+        }
+
         m_GameDisplayFramebuffer->Bind();
-        SceneColorResolvePass::Resolve(m_GameFramebuffer, gameExposure);
+        SceneColorResolvePass::Resolve(
+                m_GameFramebuffer, gameExposure,
+                SceneColorResolvePass::SelectEncoding(
+                        Project::GetActive() && Project::GetConfig().Is2D,
+                        gameCameraIsOrthographic));
         RenderCommand::ClearDepth();
         if (m_ShowGameUserInterface && m_GameViewHasValidPrimaryCamera)
         {

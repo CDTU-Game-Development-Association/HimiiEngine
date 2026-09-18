@@ -188,6 +188,7 @@ namespace Himii
                 {
                     pressedButton.WasClickedThisFrame = true;
                     ScriptEngine::OnPointerEvent(pressedEntity, ScriptEngine::ScriptPointerEventType::Click);
+                    ScriptEngine::InvokeButtonOnClick(pressedEntity.GetUUID());
                 }
             }
             m_UserInterfacePressedEntityIdentifier = 0;

@@ -100,8 +100,11 @@ namespace HimiiEngine
         }
     }
 
-    public class UIButton : Component
+    public class Button : Component
     {
+        private static readonly Dictionary<ulong, ButtonClickedEvent> ClickedEventsByEntityIdentifier =
+            new Dictionary<ulong, ButtonClickedEvent>();
+
         public bool Interactable
         {
             get => InternalCalls.UIButton_GetInteractable?.Invoke(Entity.ID) != 0;
@@ -116,6 +119,87 @@ namespace HimiiEngine
 
         public bool WasClickedThisFrame =>
             InternalCalls.UIButton_GetWasClickedThisFrame?.Invoke(Entity.ID) != 0;
+
+        public ButtonClickedEvent OnClick => GetOrCreateClickedEvent(Entity.ID);
+
+        public sealed class ButtonClickedEvent
+        {
+            private readonly List<Action> listeners = new List<Action>();
+
+            internal ButtonClickedEvent()
+            {
+            }
+
+            public void AddListener(Action? action)
+            {
+                if (action == null)
+                    return;
+                listeners.Add(action);
+            }
+
+            public void RemoveListener(Action? action)
+            {
+                if (action == null)
+                    return;
+                listeners.Remove(action);
+            }
+
+            public void RemoveAllListeners()
+            {
+                listeners.Clear();
+            }
+
+            internal void InvokeListeners()
+            {
+                if (listeners.Count == 0)
+                    return;
+
+                Action[] listenersSnapshot = listeners.ToArray();
+                for (int index = 0; index < listenersSnapshot.Length; ++index)
+                {
+                    Action listener = listenersSnapshot[index];
+                    try
+                    {
+                        listener();
+                    }
+                    catch (Exception exception)
+                    {
+                        Console.WriteLine($"[C# Error] Button.OnClick listener threw exception: {exception.Message}");
+                    }
+                }
+            }
+        }
+
+        private static ButtonClickedEvent GetOrCreateClickedEvent(ulong entityIdentifier)
+        {
+            if (!ClickedEventsByEntityIdentifier.TryGetValue(entityIdentifier, out ButtonClickedEvent? clickedEvent)
+                || clickedEvent == null)
+            {
+                clickedEvent = new ButtonClickedEvent();
+                ClickedEventsByEntityIdentifier[entityIdentifier] = clickedEvent;
+            }
+
+            return clickedEvent;
+        }
+
+        internal static void DispatchOnClick(ulong entityIdentifier)
+        {
+            if (ClickedEventsByEntityIdentifier.TryGetValue(entityIdentifier, out ButtonClickedEvent? clickedEvent)
+                && clickedEvent != null)
+            {
+                clickedEvent.InvokeListeners();
+            }
+        }
+
+        internal static void ClearOnClick(ulong entityIdentifier)
+        {
+            ClickedEventsByEntityIdentifier.Remove(entityIdentifier);
+        }
+
+        internal static void ClearAllOnClick()
+        {
+            ClickedEventsByEntityIdentifier.Clear();
+        }
     }
 
     public class SoundPlayer : Component

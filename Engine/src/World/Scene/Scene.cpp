@@ -143,6 +143,7 @@ namespace Himii
 
         if (auto *identifierComponent = m_Registry.try_get<IDComponent>(entityHandle))
         {
+            ScriptEngine::ClearButtonOnClick(identifierComponent->ID);
             auto identifierIterator = m_EntityMap.find(identifierComponent->ID);
             if (identifierIterator != m_EntityMap.end())
                 m_EntityMap.erase(identifierIterator);

@@ -27,7 +27,7 @@ layout(location = 0) in vec2 v_TextureCoordinate;
 
 layout(std140, binding = 5) uniform SceneColorResolveUniforms
 {
-	vec4 u_ExposureParameters; // x = Exposure
+	vec4 u_ExposureParameters; // x = Exposure, y = SceneReferredFilmic (0 = display-referred blit)
 };
 
 layout(binding = 0) uniform sampler2D u_HdrColorTexture;
@@ -56,6 +56,12 @@ void main()
 	vec4 hdrSample = texture(u_HdrColorTexture, v_TextureCoordinate);
 	float safeExposure = max(u_ExposureParameters.x, 0.001);
 	vec3 exposedLinear = hdrSample.rgb * safeExposure;
-	vec3 toneMapped = ApplyAcesFilmicToneMap(exposedLinear);
-	o_Color = vec4(ApproximateLinearToSrgb(toneMapped), hdrSample.a);
+	if (u_ExposureParameters.y > 0.5)
+	{
+		vec3 toneMapped = ApplyAcesFilmicToneMap(exposedLinear);
+		o_Color = vec4(ApproximateLinearToSrgb(toneMapped), hdrSample.a);
+		return;
+	}
+
+	o_Color = vec4(clamp(exposedLinear, 0.0, 1.0), hdrSample.a);
 }

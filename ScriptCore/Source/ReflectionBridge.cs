@@ -53,6 +53,44 @@ namespace HimiiEngine
             }
         }
 
+        private static bool IsEntityOrButtonField(FieldInfo field)
+        {
+            return field.FieldType == typeof(Entity) || field.FieldType == typeof(Button);
+        }
+
+        private static ulong ReadReferencedEntityIdentifier(FieldInfo field, object instance)
+        {
+            object? fieldValue = field.GetValue(instance);
+            if (fieldValue is Entity entityReference)
+                return entityReference.ID;
+            if (fieldValue is Button buttonComponent)
+            {
+                Entity? referencedEntity = buttonComponent.Entity;
+                return referencedEntity != null ? referencedEntity.ID : 0UL;
+            }
+            return 0UL;
+        }
+
+        private static void WriteReferencedEntityIdentifier(FieldInfo field, object instance, ulong entityIdentifier)
+        {
+            if (field.FieldType == typeof(Entity))
+            {
+                if (entityIdentifier > 0)
+                    field.SetValue(instance, new Entity(entityIdentifier));
+                else
+                    field.SetValue(instance, null);
+                return;
+            }
+
+            if (field.FieldType == typeof(Button))
+            {
+                if (entityIdentifier > 0)
+                    field.SetValue(instance, new Button { Entity = new Entity(entityIdentifier) });
+                else
+                    field.SetValue(instance, null);
+            }
+        }
+
         [UnmanagedCallersOnly]
         public static IntPtr GetFields(IntPtr instanceHandle)
         {
@@ -237,11 +275,10 @@ namespace HimiiEngine
                 {
                     // Filter: Only serialize ScriptFields that we support in Editor (or are serializable)
                     // For simplicity, we serialize all public fields, assuming they are data.
-                    // Special handling for Entity reference to avoid cycle/deep serialization
-                    if (field.FieldType == typeof(Entity))
+                    // Special handling for Entity / Button references to avoid cycle/deep serialization
+                    if (IsEntityOrButtonField(field))
                     {
-                        var entityRef = field.GetValue(instance) as Entity;
-                        data[field.Name] = entityRef != null ? entityRef.ID : 0;
+                        data[field.Name] = ReadReferencedEntityIdentifier(field, instance);
                     }
                     else
                     {
@@ -300,11 +337,10 @@ namespace HimiiEngine
 
                 string fieldName = Marshal.PtrToStringUTF8(fieldNamePtr);
                 FieldInfo field = GetInstanceField(instance.GetType(), fieldName);
-                if (field == null || field.FieldType != typeof(Entity))
+                if (field == null || !IsEntityOrButtonField(field))
                     return 0;
 
-                var entityRef = field.GetValue(instance) as Entity;
-                *outValue = entityRef != null ? entityRef.ID : 0;
+                *outValue = ReadReferencedEntityIdentifier(field, instance);
                 return 1;
             }
             catch (Exception e)
@@ -328,13 +364,10 @@ namespace HimiiEngine
 
                 string fieldName = Marshal.PtrToStringUTF8(fieldNamePtr);
                 FieldInfo field = GetInstanceField(instance.GetType(), fieldName);
-                if (field == null || field.FieldType != typeof(Entity))
+                if (field == null || !IsEntityOrButtonField(field))
                     return;
 
-                if (entityID > 0)
-                    field.SetValue(instance, new Entity(entityID));
-                else
-                    field.SetValue(instance, null);
+                WriteReferencedEntityIdentifier(field, instance, entityID);
             }
             catch (Exception e)
             {
@@ -390,13 +423,10 @@ namespace HimiiEngine
                     {
                         try
                         {
-                            if (field.FieldType == typeof(Entity))
+                            if (IsEntityOrButtonField(field))
                             {
-                                ulong id = element.GetUInt64();
-                                if (id > 0)
-                                    field.SetValue(instance, new Entity(id));
-                                else
-                                    field.SetValue(instance, null);
+                                ulong identifier = element.GetUInt64();
+                                WriteReferencedEntityIdentifier(field, instance, identifier);
                             }
                             else
                             {

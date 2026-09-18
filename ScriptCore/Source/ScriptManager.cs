@@ -352,5 +352,44 @@ namespace HimiiEngine
                 Console.WriteLine($"[C# Error] OnPointerEventInstance failed: {exception.Message}");
             }
         }
+
+        [UnmanagedCallersOnly]
+        public static void InvokeButtonOnClick(ulong entityIdentifier)
+        {
+            try
+            {
+                Button.DispatchOnClick(entityIdentifier);
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine($"[C# Error] InvokeButtonOnClick failed: {exception.Message}");
+            }
+        }
+
+        [UnmanagedCallersOnly]
+        public static void ClearButtonOnClick(ulong entityIdentifier)
+        {
+            try
+            {
+                Button.ClearOnClick(entityIdentifier);
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine($"[C# Error] ClearButtonOnClick failed: {exception.Message}");
+            }
+        }
+
+        [UnmanagedCallersOnly]
+        public static void ClearAllButtonOnClick()
+        {
+            try
+            {
+                Button.ClearAllOnClick();
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine($"[C# Error] ClearAllButtonOnClick failed: {exception.Message}");
+            }
+        }
     }
 }

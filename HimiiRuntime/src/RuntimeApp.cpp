@@ -121,6 +121,7 @@ namespace Himii
 
             glm::vec4 clearColor{0.0f, 0.0f, 0.0f, 1.0f};
             float exposure = SceneColorResolvePass::DefaultExposure;
+            bool cameraIsOrthographic = false;
             Entity primaryCameraEntity = m_ActiveScene->GetPrimaryCameraEntity();
             if (primaryCameraEntity && primaryCameraEntity.HasComponent<CameraComponent>())
             {
@@ -128,6 +129,8 @@ namespace Himii
                         primaryCameraEntity.GetComponent<CameraComponent>();
                 clearColor = cameraComponent.Camera.GetBackgroundColor();
                 exposure = SceneColorResolvePass::ClampExposure(cameraComponent.Exposure);
+                cameraIsOrthographic = cameraComponent.Camera.GetProjectionType()
+                        == SceneCamera::ProjectionType::Orthographic;
             }
 
             m_HdrFramebuffer->Bind();
@@ -137,7 +140,11 @@ namespace Himii
             m_HdrFramebuffer->Unbind();
 
             RenderCommand::SetViewport(0, 0, framebufferWidth, framebufferHeight);
-            SceneColorResolvePass::Resolve(m_HdrFramebuffer, exposure);
+            SceneColorResolvePass::Resolve(
+                    m_HdrFramebuffer, exposure,
+                    SceneColorResolvePass::SelectEncoding(
+                            Project::GetActive() && Project::GetConfig().Is2D,
+                            cameraIsOrthographic));
             RenderCommand::ClearDepth();
             m_ActiveScene->RenderGameUserInterface(framebufferWidth, framebufferHeight);
         }

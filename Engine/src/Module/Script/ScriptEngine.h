@@ -35,7 +35,8 @@ namespace Himii {
         Vector4,
         Entity,
         String,
-        KeyCode
+        KeyCode,
+        Button
     };
 
     enum class ScriptInstanceFlags : int
@@ -152,6 +153,9 @@ namespace Himii {
             Click = 4
         };
         static void OnPointerEvent(Entity entity, ScriptPointerEventType eventType);
+
+        static void InvokeButtonOnClick(UUID entityIdentifier);
+        static void ClearButtonOnClick(UUID entityIdentifier);
 
         static void* GetEntityScriptInstance(UUID entityID);
 

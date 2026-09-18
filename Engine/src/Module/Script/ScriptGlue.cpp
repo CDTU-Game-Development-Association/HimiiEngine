@@ -116,7 +116,7 @@ namespace Himii {
         static const uint32_t CircleCollider2DId = Fnv1A32("HimiiEngine.CircleCollider2D");
         static const uint32_t CameraId = Fnv1A32("HimiiEngine.Camera");
         static const uint32_t UITextId = Fnv1A32("HimiiEngine.UIText");
-        static const uint32_t UIButtonId = Fnv1A32("HimiiEngine.UIButton");
+        static const uint32_t ButtonId = Fnv1A32("HimiiEngine.Button");
         static const uint32_t SoundPlayerId = Fnv1A32("HimiiEngine.SoundPlayer");
 
         if (typeId == TilemapId)
@@ -137,7 +137,7 @@ namespace Himii {
             return entity.HasComponent<CameraComponent>() ? 1 : 0;
         if (typeId == UITextId)
             return entity.HasComponent<UITextComponent>() ? 1 : 0;
-        if (typeId == UIButtonId)
+        if (typeId == ButtonId)
             return entity.HasComponent<UIButtonComponent>() ? 1 : 0;
         if (typeId == SoundPlayerId)
             return entity.HasComponent<SoundPlayerComponent>() ? 1 : 0;

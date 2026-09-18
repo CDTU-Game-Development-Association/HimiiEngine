@@ -34,6 +34,14 @@ namespace Himii
         }
     }
 
+    SceneColorResolveEncoding SceneColorResolvePass::SelectEncoding(bool projectIsTwoDimensional,
+                                                                    bool cameraIsOrthographic)
+    {
+        if (projectIsTwoDimensional || cameraIsOrthographic)
+            return SceneColorResolveEncoding::DisplayReferred;
+        return SceneColorResolveEncoding::SceneReferredFilmic;
+    }
+
     float SceneColorResolvePass::ClampExposure(float exposure)
     {
         return std::max(exposure, 0.001f);
@@ -61,7 +69,8 @@ namespace Himii
         data.Initialized = false;
     }
 
-    void SceneColorResolvePass::Resolve(const Ref<Framebuffer> &sourceFramebuffer, float exposure)
+    void SceneColorResolvePass::Resolve(const Ref<Framebuffer> &sourceFramebuffer, float exposure,
+                                       SceneColorResolveEncoding encoding)
     {
         if (!sourceFramebuffer)
             return;
@@ -79,6 +88,8 @@ namespace Himii
 
         SceneColorResolveUniformsData uniforms{};
         uniforms.ExposureParameters.x = ClampExposure(exposure);
+        uniforms.ExposureParameters.y =
+                encoding == SceneColorResolveEncoding::SceneReferredFilmic ? 1.0f : 0.0f;
         data.ResolveUniformBuffer->SetData(&uniforms, sizeof(SceneColorResolveUniformsData));
         data.ResolveUniformBuffer->Bind();
 

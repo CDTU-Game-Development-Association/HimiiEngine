@@ -56,6 +56,9 @@ namespace Himii
     typedef void(CORECLR_DELEGATE_CALLTYPE *OnTriggerEnter2DInstanceFn)(void *handle, Collision2DInterop collision);
     typedef void(CORECLR_DELEGATE_CALLTYPE *OnTriggerExit2DInstanceFn)(void *handle, uint64_t otherEntityID);
     typedef void(CORECLR_DELEGATE_CALLTYPE *OnPointerEventInstanceFn)(void *handle, int eventType);
+    typedef void(CORECLR_DELEGATE_CALLTYPE *InvokeButtonOnClickFn)(uint64_t entityIdentifier);
+    typedef void(CORECLR_DELEGATE_CALLTYPE *ClearButtonOnClickFn)(uint64_t entityIdentifier);
+    typedef void(CORECLR_DELEGATE_CALLTYPE *ClearAllButtonOnClickFn)();
 
     typedef const char *(CORECLR_DELEGATE_CALLTYPE *GetFieldsFn)(void *handle);
     typedef int(CORECLR_DELEGATE_CALLTYPE *GetFloatFn)(void *handle, const char *name, float *out);
@@ -92,6 +95,9 @@ namespace Himii
     static OnTriggerEnter2DInstanceFn s_OnTriggerEnter2D = nullptr;
     static OnTriggerExit2DInstanceFn s_OnTriggerExit2D = nullptr;
     static OnPointerEventInstanceFn s_OnPointerEvent = nullptr;
+    static InvokeButtonOnClickFn s_InvokeButtonOnClick = nullptr;
+    static ClearButtonOnClickFn s_ClearButtonOnClick = nullptr;
+    static ClearAllButtonOnClickFn s_ClearAllButtonOnClick = nullptr;
 
     // Reflection
     static GetFieldsFn s_GetFields = nullptr;
@@ -298,6 +304,18 @@ namespace Himii
                                                STR("OnPointerEventInstance"), UNMANAGEDCALLERSONLY_METHOD, nullptr,
                                                (void **)&s_OnPointerEvent);
 
+        load_assembly_and_get_function_pointer(filepath.c_str(), STR("HimiiEngine.ScriptManager, ScriptCore"),
+                                               STR("InvokeButtonOnClick"), UNMANAGEDCALLERSONLY_METHOD, nullptr,
+                                               (void **)&s_InvokeButtonOnClick);
+
+        load_assembly_and_get_function_pointer(filepath.c_str(), STR("HimiiEngine.ScriptManager, ScriptCore"),
+                                               STR("ClearButtonOnClick"), UNMANAGEDCALLERSONLY_METHOD, nullptr,
+                                               (void **)&s_ClearButtonOnClick);
+
+        load_assembly_and_get_function_pointer(filepath.c_str(), STR("HimiiEngine.ScriptManager, ScriptCore"),
+                                               STR("ClearAllButtonOnClick"), UNMANAGEDCALLERSONLY_METHOD, nullptr,
+                                               (void **)&s_ClearAllButtonOnClick);
+
         // [NEW] Load Reflection Bridge functions
         const char_t *bridge_type = STR("HimiiEngine.ReflectionBridge, ScriptCore");
         load_assembly_and_get_function_pointer(filepath.c_str(), bridge_type, STR("GetFields"),
@@ -393,6 +411,9 @@ namespace Himii
 
     void ScriptEngine::ReleaseAllInstances()
     {
+        if (s_ClearAllButtonOnClick)
+            s_ClearAllButtonOnClick();
+
         for (auto &[uuid, handle] : s_EntityInstanceMap)
             DestroyInstance(handle);
         s_EntityInstanceMap.clear();
@@ -473,7 +494,7 @@ namespace Himii
                 int value = field.GetValue<int>();
                 SetInt(instance, name, value);
             }
-            else if (field.Type == ScriptFieldType::Entity)
+            else if (field.Type == ScriptFieldType::Entity || field.Type == ScriptFieldType::Button)
             {
                 UUID value = field.GetValue<UUID>();
                 SetEntityField(instance, name, value);
@@ -599,6 +620,7 @@ namespace Himii
                     else if (typeStr == "Entity") type = ScriptFieldType::Entity;
                     else if (typeStr == "String") type = ScriptFieldType::String;
                     else if (typeStr == "KeyCode") type = ScriptFieldType::KeyCode;
+                    else if (typeStr == "Button") type = ScriptFieldType::Button;
 
                     if (type != ScriptFieldType::None)
                     {
@@ -660,7 +682,7 @@ namespace Himii
                                  glm::vec4 val; GetVector4(instance, name, val);
                                  fieldInst.SetValue(val);
                              }
-                             else if (type == ScriptFieldType::Entity)
+                             else if (type == ScriptFieldType::Entity || type == ScriptFieldType::Button)
                              {
                                  UUID entityID{};
                                  if (GetEntityField(instance, name, entityID))
@@ -904,6 +926,18 @@ namespace Himii
         void *handle = GetEntityScriptInstance(entity.GetUUID());
         if (handle && s_OnPointerEvent)
             s_OnPointerEvent(handle, static_cast<int>(eventType));
+    }
+
+    void ScriptEngine::InvokeButtonOnClick(UUID entityIdentifier)
+    {
+        if (s_InvokeButtonOnClick)
+            s_InvokeButtonOnClick(entityIdentifier);
+    }
+
+    void ScriptEngine::ClearButtonOnClick(UUID entityIdentifier)
+    {
+        if (s_ClearButtonOnClick)
+            s_ClearButtonOnClick(entityIdentifier);
     }
 
     void *ScriptEngine::GetEntityScriptInstance(UUID entityID)

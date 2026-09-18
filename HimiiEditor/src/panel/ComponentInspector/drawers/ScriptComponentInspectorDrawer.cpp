@@ -9,6 +9,7 @@
 #include "Module/Script/ScriptIDELauncher.h"
 
 #include <filesystem>
+#include <string>
 
 #include <imgui.h>
 
@@ -267,6 +268,80 @@ namespace Himii
                                         ImGui::EndCombo();
                                     }
                                     ImGui::PopItemWidth();
+                                });
+                        }
+                        else if (field.Type == ScriptFieldType::Button)
+                        {
+                            UUID data = field.GetValue<UUID>();
+                            const bool showResetButton = data != UUID{};
+                            DrawPropertyRow(
+                                name.c_str(),
+                                [&]()
+                                {
+                                    std::string preview = "None";
+                                    if (data)
+                                    {
+                                        Entity referenceEntity = scene->GetEntityByUUID(data);
+                                        if (referenceEntity)
+                                            preview = referenceEntity.GetName();
+                                        else
+                                            preview = "Missing";
+                                    }
+
+                                    ImGui::PushItemWidth(-1.0f);
+                                    if (ImGui::BeginCombo("##ButtonReference", preview.c_str()))
+                                    {
+                                        if (ImGui::Selectable("None", data == UUID{}))
+                                        {
+                                            data = {};
+                                            field.SetValue(data);
+                                            ScriptEngine::SetEntityField(
+                                                ScriptEngine::GetEntityScriptInstance(entity.GetUUID()), name, data);
+                                        }
+
+                                        if (scene)
+                                        {
+                                            const auto& view = scene->Registry().view<TagComponent>();
+                                            for (auto sceneHandle : view)
+                                            {
+                                                Entity sceneEntity{sceneHandle, scene.get()};
+                                                if (sceneEntity == entity)
+                                                    continue;
+                                                if (!sceneEntity.HasComponent<UIButtonComponent>())
+                                                    continue;
+
+                                                UUID referencedEntityIdentifier = sceneEntity.GetUUID();
+                                                const bool isSelected = referencedEntityIdentifier == data;
+                                                const std::string selectableLabel =
+                                                    sceneEntity.GetName() + "##" +
+                                                    std::to_string(static_cast<uint64_t>(referencedEntityIdentifier));
+                                                if (ImGui::Selectable(selectableLabel.c_str(), isSelected))
+                                                {
+                                                    if (!sceneEntity.HasComponent<UIButtonComponent>())
+                                                        continue;
+
+                                                    data = referencedEntityIdentifier;
+                                                    field.SetValue(data);
+                                                    ScriptEngine::SetEntityField(
+                                                        ScriptEngine::GetEntityScriptInstance(entity.GetUUID()),
+                                                        name, data);
+                                                }
+                                                if (isSelected)
+                                                    ImGui::SetItemDefaultFocus();
+                                            }
+                                        }
+                                        ImGui::EndCombo();
+                                    }
+                                    ImGui::PopItemWidth();
+                                },
+                                nullptr,
+                                showResetButton,
+                                [&]()
+                                {
+                                    data = {};
+                                    field.SetValue(data);
+                                    ScriptEngine::SetEntityField(
+                                        ScriptEngine::GetEntityScriptInstance(entity.GetUUID()), name, data);
                                 });
                         }
                     }

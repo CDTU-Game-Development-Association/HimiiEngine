@@ -142,19 +142,54 @@ namespace Himii
                                     std::istreambuf_iterator<char>());
         projectFile.close();
 
-        if (projectContents.find(AllAssetScriptsCompileRule) != std::string::npos)
-            return true;
+        const std::string originalProjectContents = projectContents;
+        bool compileRuleUpdated = false;
 
-        const size_t legacyRulePosition = projectContents.find(LegacyScriptCompileRule);
-        if (legacyRulePosition == std::string::npos)
+        if (projectContents.find(AllAssetScriptsCompileRule) == std::string::npos)
         {
-            HIMII_CORE_WARNING(
-                    "GameAssembly.csproj uses a custom Compile rule; automatic migration was skipped.");
-            return false;
+            const size_t legacyRulePosition = projectContents.find(LegacyScriptCompileRule);
+            if (legacyRulePosition == std::string::npos)
+            {
+                HIMII_CORE_WARNING(
+                        "GameAssembly.csproj uses a custom Compile rule; automatic migration was skipped.");
+            }
+            else
+            {
+                projectContents.replace(legacyRulePosition, std::strlen(LegacyScriptCompileRule),
+                                        AllAssetScriptsCompileRule);
+                compileRuleUpdated = true;
+            }
         }
 
-        projectContents.replace(legacyRulePosition, std::strlen(LegacyScriptCompileRule),
-                                AllAssetScriptsCompileRule);
+        constexpr const char *RelativeScriptCoreHintPath = "<HintPath>ScriptCore.dll</HintPath>";
+        constexpr const char *ProjectDirectoryScriptCoreHintPath =
+                "<HintPath>$(MSBuildThisFileDirectory)ScriptCore.dll</HintPath>";
+        const size_t relativeHintPathPosition = projectContents.find(RelativeScriptCoreHintPath);
+        if (relativeHintPathPosition != std::string::npos)
+        {
+            projectContents.replace(
+                    relativeHintPathPosition, std::strlen(RelativeScriptCoreHintPath),
+                    ProjectDirectoryScriptCoreHintPath);
+        }
+
+        constexpr const char *BuildDirectoryExclude = "build/**";
+        if (projectContents.find(BuildDirectoryExclude) == std::string::npos)
+        {
+            constexpr const char *DefaultCompileItemsDisabled =
+                    "<EnableDefaultCompileItems>false</EnableDefaultCompileItems>";
+            const size_t compileItemsPosition = projectContents.find(DefaultCompileItemsDisabled);
+            if (compileItemsPosition != std::string::npos)
+            {
+                const size_t insertPosition =
+                        compileItemsPosition + std::strlen(DefaultCompileItemsDisabled);
+                projectContents.insert(
+                        insertPosition,
+                        "\n    <DefaultItemExcludes>$(DefaultItemExcludes);build/**</DefaultItemExcludes>");
+            }
+        }
+
+        if (projectContents == originalProjectContents)
+            return true;
 
         std::ofstream outputFile(projectFilePath, std::ios::binary | std::ios::trunc);
         if (!outputFile.is_open())
@@ -167,7 +202,7 @@ namespace Himii
         const bool writeSucceeded = outputFile.good();
         outputFile.close();
 
-        if (writeSucceeded)
+        if (writeSucceeded && compileRuleUpdated)
             HIMII_CORE_INFO("Updated GameAssembly.csproj to compile C# scripts anywhere under Assets.");
         return writeSucceeded;
     }
@@ -196,6 +231,7 @@ namespace Himii
     <OutputPath>bin\$(Configuration)</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <DefaultItemExcludes>$(DefaultItemExcludes);build/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -208,7 +244,7 @@ namespace Himii
 
   <ItemGroup>
     <Reference Include="ScriptCore">
-      <HintPath>ScriptCore.dll</HintPath>
+      <HintPath>$(MSBuildThisFileDirectory)ScriptCore.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
