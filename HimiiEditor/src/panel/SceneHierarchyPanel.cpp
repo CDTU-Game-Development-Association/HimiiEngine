@@ -79,6 +79,11 @@ namespace Himii
         m_CommandHistory = commandHistory;
     }
 
+    void SceneHierarchyPanel::SetPrefabAuthoringEnabled(bool enabled)
+    {
+        m_PrefabAuthoringEnabled = enabled;
+    }
+
     void SceneHierarchyPanel::DrawHierarchyRoots(bool userInterfaceEntities)
     {
         if (!m_Context)
@@ -130,7 +135,9 @@ namespace Himii
             ImGui::EndDragDropTarget();
         }
 
-        if (ImGui::BeginPopupContextWindow(0, 1))
+        // 空白处才弹出创建菜单。盖在实体行上会抢走实体菜单，Save as Prefab 就出不来。
+        if (ImGui::BeginPopupContextWindow(
+                    nullptr, ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
         {
             DrawCreateEntityMenu();
             ImGui::EndPopup();
@@ -551,12 +558,12 @@ namespace Himii
             }
 
             ImGui::Separator();
-            if (ImGui::MenuItem("Save as Prefab..."))
+            if (ImGui::MenuItem("Save as Prefab...", nullptr, false, m_PrefabAuthoringEnabled))
             {
                 std::string filePath = FileDialog::SaveFile("Himii Prefab (*.hprefab)\0*.hprefab\0");
                 if (!filePath.empty())
                 {
-                    if (PrefabSerializer::Save(entity, filePath))
+                    if (PrefabSerializer::Save(m_Context, entity, filePath))
                     {
                         if (Project::GetActive())
                         {

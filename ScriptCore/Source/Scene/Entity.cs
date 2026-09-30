@@ -36,7 +36,8 @@ namespace HimiiEngine
         }
 
         /// <summary>
-        /// 从 Prefab 资产实例化实体（路径相对于 assets，例如 prefabs/Enemy.hprefab）。
+        /// 从 Prefab 资产实例化整棵实体子树（路径相对于 assets，例如 prefabs/Enemy.hprefab）。
+        /// 返回根实体，根没有父节点。要挂到某个实体下，再调用 SetParent(parent, false)。
         /// </summary>
         public static Entity Instantiate(string prefabPath)
         {

@@ -289,14 +289,18 @@ string current = SceneManager.ActiveScenePath;
 ## Prefab 实例化
 
 ```csharp
-Entity enemy = Entity.Instantiate("prefabs/Enemy.hprefab");
-if (enemy != null)
-    enemy.Position = new Vector3(5.0f, 0.0f, 0.0f);
+Entity turret = Entity.Instantiate("prefabs/Turret.hprefab");
+if (turret != null)
+    turret.SetParent(mountPoint, false);
 ```
 
 - 路径相对于 **`assets/`**。
-- 仅在 **Play** 模式会为脚本调用 `OnCreate`。
-- 编辑器中：Hierarchy 右键 **Save as Prefab**，或将 `.hprefab` 拖入 Viewport 实例化。
+- 保存的是选中实体及其全部后代。实例是一次性拷贝，场景不记录来源 Prefab。
+- `Instantiate` 返回根实体，根没有父节点。`SetParent(parent, false)` 保留 Prefab 根上的本地变换。`OnCreate` 发生在这次 `SetParent` 之前。
+- 运行时会为子树里每个带脚本的实体调用 `OnCreate`（先根后后代），并补建物理、播放 `PlayOnStart`、重置精灵动画。
+- 编辑器中：仅 **Edit** 模式可 Hierarchy 右键 **Save as Prefab**，或将 `.hprefab` 拖入 Viewport。拖入记成一步 Undo。Play / Simulate 下这两项不可用。
+- 只读取带 `Entities` 序列的 `.hprefab`。旧的单实体根映射需要重新保存。
+- 目标场景已经有 Canvas 时，不能再实例化一份带 Canvas 的 Prefab。控件预制体从控件自己的根保存，再挂到场景 Canvas 上。
 
 ---
 

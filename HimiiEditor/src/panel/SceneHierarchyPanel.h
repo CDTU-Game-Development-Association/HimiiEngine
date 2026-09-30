@@ -19,6 +19,7 @@ namespace Himii
 
         void SetContext(const Ref<Scene> &context);
         void SetCommandHistory(EditorCommandHistory* commandHistory);
+        void SetPrefabAuthoringEnabled(bool enabled);
 
         void OnImGuiRender();
 
@@ -94,6 +95,7 @@ namespace Himii
         std::filesystem::path m_AnimationEditorRequest;
 
         EditorCommandHistory* m_CommandHistory = nullptr;
+        bool m_PrefabAuthoringEnabled = true;
 
         std::string m_TagEditStartValue;
         std::array<char, 128> m_AddComponentSearchBuffer{};

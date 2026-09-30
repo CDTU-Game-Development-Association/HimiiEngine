@@ -69,6 +69,10 @@ namespace Himii
         void OnRuntimeStop();
         void OnSimulationStop();
 
+        /// 运行时实例化之后唤醒这棵子树：先补物理，再重置动画，再按先根后后代调用 OnCreate，最后播放 PlayOnStart。
+        /// 编辑态不要调用。OnCreate 发生在调用方 SetParent 之前。
+        void AwakenInstantiatedSubtree(Entity rootEntity);
+
         void OnUpdateEditor(Timestep ts, EditorCamera &camera, bool drawUserInterfaceContent = true);
         /// 转发到 OwningWorld；无绑定时为空操作。
         void OnUpdateRuntime(Timestep ts, bool drawUserInterfaceContent = true);

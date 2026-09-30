@@ -128,9 +128,8 @@ Entities:
 
 ## 待扩展（真实缺口）
 
-- **Prefab** 引用与实例化覆盖
+- **Prefab** 实例不记录来源，也不做实例化覆盖
 - 部分高级组件的统一资源句柄格式（AssetHandle vs 路径混用时的规范化）
-- **实体父子层级** 若引入 Parent 组件，需在序列化中增加关系块
 - 更完整的 **NativeScriptComponent** / 程序集拆分（多 asmdef）
 
 ## 测试建议

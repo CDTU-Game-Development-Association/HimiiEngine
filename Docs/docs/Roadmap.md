@@ -94,7 +94,7 @@
 | :--- | :--- | :--- |
 | [x] | **Entity Parent Hierarchy** | 只存 `Parent` 为唯一真相；Children 运行时重建/缓存；Hierarchy 显示为树 |
 | [x] | **Local Transform** | `TransformComponent` 的 Position/Rotation/Scale 语义改为 **Local**；世界矩阵由父链计算（可缓存）；字段名暂不强制重命名 |
-| [ ] | **Multi-Entity Prefab** | 利用父子层级序列化一组实体为 `.hprefab`；**不做**实例属性覆盖 / 变体 / Prefab 嵌套覆盖 |
+| [x] | **Multi-Entity Prefab** | 利用父子层级序列化一组实体为 `.hprefab`；**不做**实例属性覆盖 / 变体 / Prefab 嵌套覆盖 |
 | [x] | **Canvas (Screen Space Overlay)** | 引入 Canvas（或等价 UI 根）；至少支持 Screen Space Overlay |
 | [x] | **Canvas Scaler** | 参考分辨率自适应；无 Scaler 则 Canvas 不算完成 |
 | [x] | **UIButton（最小）** | 挂在 Canvas 子树下；点击回调（按下/悬停/点击）；不做通用布局系统 |

@@ -146,120 +146,125 @@ namespace Himii
         m_Box2DWorld = b2CreateWorld(&worldDef);
 
         auto &registry = m_Scene->Registry();
-        auto view = registry.view<Rigidbody2DComponent>();
-        for (auto entityHandle : view)
+        auto rigidbodyView = registry.view<Rigidbody2DComponent>();
+        for (auto entityHandle : rigidbodyView)
         {
             Entity entity = {entityHandle, m_Scene};
+            entity.GetComponent<Rigidbody2DComponent>().RuntimeBody = nullptr;
+        }
+
+        auto identifierView = registry.view<IDComponent>();
+        for (auto entityHandle : identifierView)
+            CreateBodyForEntity(Entity{entityHandle, m_Scene});
+    }
+
+    void Physics2DWorld::CreateBodyForEntity(Entity entity)
+    {
+        if (!m_Scene || !entity || !b2World_IsValid(m_Box2DWorld))
+            return;
+
+        if (entity.HasComponent<Rigidbody2DComponent>())
+        {
             auto &rigidbody2D = entity.GetComponent<Rigidbody2DComponent>();
-            const glm::vec3 worldTranslation = m_Scene->GetEntityWorldTranslation(entity);
-            const glm::vec3 worldRotation = m_Scene->GetEntityWorldRotation(entity);
-            const glm::vec3 worldScale = m_Scene->GetEntityWorldScale(entity);
-
-            b2BodyDef bodyDef = b2DefaultBodyDef();
-
-            switch (rigidbody2D.Type)
+            const bool alreadyHasBody = rigidbody2D.RuntimeBody
+                    && b2Body_IsValid(SceneInternal::PointerToBodyId(rigidbody2D.RuntimeBody));
+            if (!alreadyHasBody)
             {
-                case Rigidbody2DComponent::BodyType::Static:
-                    bodyDef.type = b2BodyType::b2_staticBody;
-                    break;
-                case Rigidbody2DComponent::BodyType::Dynamic:
-                    bodyDef.type = b2BodyType::b2_dynamicBody;
-                    break;
-                case Rigidbody2DComponent::BodyType::Kinematic:
-                    bodyDef.type = b2BodyType::b2_kinematicBody;
-                    break;
+                const glm::vec3 worldTranslation = m_Scene->GetEntityWorldTranslation(entity);
+                const glm::vec3 worldRotation = m_Scene->GetEntityWorldRotation(entity);
+                const glm::vec3 worldScale = m_Scene->GetEntityWorldScale(entity);
+
+                b2BodyDef bodyDef = b2DefaultBodyDef();
+
+                switch (rigidbody2D.Type)
+                {
+                    case Rigidbody2DComponent::BodyType::Static:
+                        bodyDef.type = b2BodyType::b2_staticBody;
+                        break;
+                    case Rigidbody2DComponent::BodyType::Dynamic:
+                        bodyDef.type = b2BodyType::b2_dynamicBody;
+                        break;
+                    case Rigidbody2DComponent::BodyType::Kinematic:
+                        bodyDef.type = b2BodyType::b2_kinematicBody;
+                        break;
+                }
+
+                bodyDef.position = {worldTranslation.x, worldTranslation.y};
+                bodyDef.rotation = b2MakeRot(worldRotation.z);
+                bodyDef.fixedRotation = rigidbody2D.FixedRotation;
+                bodyDef.userData = (void *)(uintptr_t)(uint32_t)entity;
+
+                b2BodyId bodyId = b2CreateBody(m_Box2DWorld, &bodyDef);
+                rigidbody2D.RuntimeBody = SceneInternal::BodyIdToPointer(bodyId);
+
+                if (entity.HasComponent<BoxCollider2DComponent>())
+                    AttachBoxColliderToBody(bodyId, entity.GetComponent<BoxCollider2DComponent>(), worldScale);
+
+                if (entity.HasComponent<CircleCollider2DComponent>())
+                    AttachCircleColliderToBody(bodyId, entity.GetComponent<CircleCollider2DComponent>(), worldScale);
             }
-
-            bodyDef.position = {worldTranslation.x, worldTranslation.y};
-            bodyDef.rotation = b2MakeRot(worldRotation.z);
-            bodyDef.fixedRotation = rigidbody2D.FixedRotation;
-            bodyDef.userData = (void *)(uintptr_t)(uint32_t)entity;
-
-            b2BodyId bodyId = b2CreateBody(m_Box2DWorld, &bodyDef);
-            rigidbody2D.RuntimeBody = SceneInternal::BodyIdToPointer(bodyId);
+        }
+        else if (entity.HasComponent<TransformComponent>()
+                 && (entity.HasComponent<BoxCollider2DComponent>()
+                     || entity.HasComponent<CircleCollider2DComponent>()))
+        {
+            const glm::vec3 worldScale = m_Scene->GetEntityWorldScale(entity);
+            const b2BodyId staticBodyId = CreateStaticPhysicsBody(m_Box2DWorld, m_Scene, entity);
 
             if (entity.HasComponent<BoxCollider2DComponent>())
-                AttachBoxColliderToBody(bodyId, entity.GetComponent<BoxCollider2DComponent>(), worldScale);
-
+                AttachBoxColliderToBody(
+                        staticBodyId, entity.GetComponent<BoxCollider2DComponent>(), worldScale);
             if (entity.HasComponent<CircleCollider2DComponent>())
-                AttachCircleColliderToBody(bodyId, entity.GetComponent<CircleCollider2DComponent>(), worldScale);
+                AttachCircleColliderToBody(
+                        staticBodyId, entity.GetComponent<CircleCollider2DComponent>(), worldScale);
         }
 
+        if (!entity.HasComponent<TransformComponent>()
+            || !entity.HasComponent<TilemapComponent>()
+            || !entity.HasComponent<TilemapCollider2DComponent>())
+            return;
+
+        auto &transform = entity.GetComponent<TransformComponent>();
+        auto &tilemap = entity.GetComponent<TilemapComponent>();
+        auto &tilemapCollider = entity.GetComponent<TilemapCollider2DComponent>();
+
+        if (!tilemapCollider.Enabled || tilemap.TileMapHandle == 0)
+            return;
+
+        auto assetManager = ResourceSystem::GetAssetManager();
+        if (!assetManager)
+            return;
+
+        Ref<TileMapData> mapData = std::static_pointer_cast<TileMapData>(
+                assetManager->GetAsset(tilemap.TileMapHandle));
+        if (!mapData || mapData->GetCellSize() <= 0.0f)
+            return;
+
+        Ref<TileSet> tileSet;
+        if (mapData->GetTileSetHandle() != 0)
         {
-            auto colliderOnlyView = registry.view<TransformComponent>();
-            for (auto entityHandle : colliderOnlyView)
-            {
-                if (registry.any_of<Rigidbody2DComponent>(entityHandle))
-                    continue;
-
-                const bool hasBoxCollider = registry.all_of<BoxCollider2DComponent>(entityHandle);
-                const bool hasCircleCollider = registry.all_of<CircleCollider2DComponent>(entityHandle);
-                if (!hasBoxCollider && !hasCircleCollider)
-                    continue;
-
-                Entity entity = {entityHandle, m_Scene};
-                const glm::vec3 worldScale = m_Scene->GetEntityWorldScale(entity);
-                const b2BodyId staticBodyId = CreateStaticPhysicsBody(m_Box2DWorld, m_Scene, entity);
-
-                if (hasBoxCollider)
-                    AttachBoxColliderToBody(
-                            staticBodyId, entity.GetComponent<BoxCollider2DComponent>(), worldScale);
-                if (hasCircleCollider)
-                    AttachCircleColliderToBody(
-                            staticBodyId, entity.GetComponent<CircleCollider2DComponent>(), worldScale);
-            }
+            tileSet = std::static_pointer_cast<TileSet>(
+                    assetManager->GetAsset(mapData->GetTileSetHandle()));
         }
 
-        auto tilemapColliderView =
-                registry.view<TransformComponent, TilemapComponent, TilemapCollider2DComponent>();
-        for (auto entityHandle : tilemapColliderView)
+        if (!tileSet)
         {
-            Entity entity = {entityHandle, m_Scene};
-            auto &transform = entity.GetComponent<TransformComponent>();
-            auto &tilemap = entity.GetComponent<TilemapComponent>();
-            auto &tilemapCollider = entity.GetComponent<TilemapCollider2DComponent>();
-
-            if (!tilemapCollider.Enabled || tilemap.TileMapHandle == 0)
-                continue;
-
-            auto assetManager = ResourceSystem::GetAssetManager();
-            if (!assetManager)
-                continue;
-
-            Ref<TileMapData> mapData = std::static_pointer_cast<TileMapData>(
-                    assetManager->GetAsset(tilemap.TileMapHandle));
-            if (!mapData)
-                continue;
-
-            if (mapData->GetCellSize() <= 0.0f)
-                continue;
-
-            Ref<TileSet> tileSet;
-            if (mapData->GetTileSetHandle() != 0)
-            {
-                tileSet = std::static_pointer_cast<TileSet>(
-                        assetManager->GetAsset(mapData->GetTileSetHandle()));
-            }
-
-            if (!tileSet)
-            {
-                HIMII_CORE_WARNING(
-                        "TilemapCollider2D: entity '{0}' has no TileSet; colliders were not created.",
-                        entity.GetName());
-                continue;
-            }
-
-            void *bodyUserData = (void *)(uintptr_t)(uint32_t)entity;
-            const TilemapColliderBuildReport report = TilemapColliderBuilder::CreateColliderShapes(
-                    m_Box2DWorld,
-                    transform,
-                    *mapData,
-                    *tileSet,
-                    bodyUserData,
-                    tilemapCollider.MergeAdjacentCells);
-
-            TilemapColliderBuilder::LogBuildReport(entity.GetName(), report);
+            HIMII_CORE_WARNING(
+                    "TilemapCollider2D: entity '{0}' has no TileSet; colliders were not created.",
+                    entity.GetName());
+            return;
         }
+
+        void *bodyUserData = (void *)(uintptr_t)(uint32_t)entity;
+        const TilemapColliderBuildReport report = TilemapColliderBuilder::CreateColliderShapes(
+                m_Box2DWorld,
+                transform,
+                *mapData,
+                *tileSet,
+                bodyUserData,
+                tilemapCollider.MergeAdjacentCells);
+
+        TilemapColliderBuilder::LogBuildReport(entity.GetName(), report);
     }
 
     void Physics2DWorld::Stop()

@@ -261,4 +261,37 @@ namespace Himii
         else
             ApplyParent(m_ParentBeforeIdentifier, m_LocalTransformBefore, {}, false);
     }
+
+    InstantiatePrefabCommand::InstantiatePrefabCommand(const Ref<Scene>& scene, UUID rootIdentifier)
+        : m_Scene(scene)
+        , m_RootIdentifier(rootIdentifier)
+    {
+    }
+
+    void InstantiatePrefabCommand::Execute()
+    {
+        if (m_SkipNextExecute)
+        {
+            m_SkipNextExecute = false;
+            return;
+        }
+
+        if (!m_Scene || m_SubtreeYaml.empty())
+            return;
+
+        EntitySnapshot::RestoreSubtree(m_Scene, m_SubtreeYaml);
+    }
+
+    void InstantiatePrefabCommand::Undo()
+    {
+        if (!m_Scene || m_RootIdentifier == 0)
+            return;
+
+        Entity rootEntity = m_Scene->GetEntityByUUID(m_RootIdentifier);
+        if (!rootEntity)
+            return;
+
+        m_SubtreeYaml = EntitySnapshot::SerializeSubtree(m_Scene, rootEntity);
+        m_Scene->DestroyEntity(rootEntity);
+    }
 }

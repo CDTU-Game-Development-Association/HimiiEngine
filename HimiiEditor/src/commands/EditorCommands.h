@@ -117,6 +117,23 @@ namespace Himii
         std::string m_AfterTag;
     };
 
+    class InstantiatePrefabCommand : public IEditorCommand
+    {
+    public:
+        InstantiatePrefabCommand(const Ref<Scene>& scene, UUID rootIdentifier);
+
+        void Execute() override;
+        void Undo() override;
+
+        UUID GetRootIdentifier() const { return m_RootIdentifier; }
+
+    private:
+        Ref<Scene> m_Scene;
+        UUID m_RootIdentifier = 0;
+        std::string m_SubtreeYaml;
+        bool m_SkipNextExecute = true;
+    };
+
     class ReparentEntityCommand : public IEditorCommand
     {
     public:

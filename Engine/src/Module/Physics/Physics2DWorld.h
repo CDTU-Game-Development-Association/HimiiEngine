@@ -22,6 +22,9 @@ namespace Himii
         void Stop();
         void Step(Timestep timestep);
 
+        /// 物理世界已在运行时，为这个实体补建刚体、独立碰撞体或 Tilemap 碰撞。世界未启动时不做任何事。
+        void CreateBodyForEntity(Entity entity);
+
         Scene::RaycastHit2D Raycast2D(glm::vec2 start, glm::vec2 end);
         void SyncEntityTransform(Entity entity);
 

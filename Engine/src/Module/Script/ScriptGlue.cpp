@@ -1888,10 +1888,7 @@ namespace Himii {
             return 0;
 
         if (ScriptEngine::IsRuntimeActive())
-        {
-            if (instantiatedEntity.HasComponent<ScriptComponent>())
-                ScriptEngine::OnCreateEntity(instantiatedEntity);
-        }
+            scene->AwakenInstantiatedSubtree(instantiatedEntity);
 
         return instantiatedEntity.GetUUID();
     }

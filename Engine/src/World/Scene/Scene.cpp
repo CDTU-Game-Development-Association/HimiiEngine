@@ -229,6 +229,62 @@ namespace Himii
         ScriptEngine::OnRuntimeStop();
     }
 
+    void Scene::AwakenInstantiatedSubtree(Entity rootEntity)
+    {
+        if (!rootEntity)
+            return;
+
+        std::vector<Entity> subtreeEntities;
+        std::vector<Entity> pendingEntities;
+        pendingEntities.push_back(rootEntity);
+        while (!pendingEntities.empty())
+        {
+            Entity entity = pendingEntities.back();
+            pendingEntities.pop_back();
+            if (!entity)
+                continue;
+
+            subtreeEntities.push_back(entity);
+            const std::vector<UUID> childIdentifiers = GetEntityChildren(entity);
+            for (auto childIterator = childIdentifiers.rbegin(); childIterator != childIdentifiers.rend();
+                 ++childIterator)
+                pendingEntities.push_back(GetEntityByUUID(*childIterator));
+        }
+
+        if (m_OwningWorld)
+        {
+            if (Physics2DWorld *physicsWorld = m_OwningWorld->GetPhysics2DWorld())
+            {
+                for (Entity entity : subtreeEntities)
+                    physicsWorld->CreateBodyForEntity(entity);
+            }
+        }
+
+        for (Entity entity : subtreeEntities)
+        {
+            if (entity.HasComponent<SpriteAnimationComponent>())
+                ResetSpriteAnimationPlayback(entity.GetComponent<SpriteAnimationComponent>());
+        }
+
+        for (Entity entity : subtreeEntities)
+        {
+            if (entity.HasComponent<ScriptComponent>())
+                ScriptEngine::OnCreateEntity(entity);
+        }
+
+        for (Entity entity : subtreeEntities)
+        {
+            if (!entity.HasComponent<SoundPlayerComponent>())
+                continue;
+
+            SoundPlayerComponent &soundPlayer = entity.GetComponent<SoundPlayerComponent>();
+            soundPlayer.RuntimeVoiceHandle = AudioEngine::InvalidVoiceHandle;
+            soundPlayer.RuntimePaused = false;
+            if (soundPlayer.PlayOnStart)
+                SoundPlayerUtility::Play(soundPlayer);
+        }
+    }
+
     void Scene::OnUpdateEditor(Timestep ts, EditorCamera &camera, bool drawUserInterfaceContent)
     {
         UpdateSpriteAnimations(ts, true);

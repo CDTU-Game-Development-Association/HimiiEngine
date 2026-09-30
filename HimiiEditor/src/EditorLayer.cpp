@@ -753,12 +753,17 @@ namespace Himii
                     {
                         OpenScene(fullAssetPath);
                     }
-                    else if (assetPath.extension() == ".hprefab" && m_EditorScene)
+                    else if (assetPath.extension() == ".hprefab" && m_EditorScene
+                             && m_SceneState == SceneState::Edit)
                     {
                         Entity instantiatedEntity =
                                 PrefabSerializer::Instantiate(m_EditorScene, fullAssetPath);
                         if (instantiatedEntity)
+                        {
+                            m_CommandHistory.Execute(CreateScope<InstantiatePrefabCommand>(
+                                    m_EditorScene, instantiatedEntity.GetUUID()));
                             m_SceneHierarchyPanel.SetSelectedEntity(instantiatedEntity);
+                        }
                     }
                     else if (assetPath.extension() == ".hmesh" && m_EditorScene)
                     {
@@ -2915,6 +2920,7 @@ namespace Himii
         }
 
         m_SceneHierarchyPanel.SetContext(m_ActiveScene);
+        m_SceneHierarchyPanel.SetPrefabAuthoringEnabled(false);
     }
 
     void EditorLayer::OnSceneSimulate()
@@ -2930,6 +2936,7 @@ namespace Himii
         m_World->OnSimulationStart();
 
         m_SceneHierarchyPanel.SetContext(m_ActiveScene);
+        m_SceneHierarchyPanel.SetPrefabAuthoringEnabled(false);
     }
 
     void EditorLayer::OnSceneStop()
@@ -2948,6 +2955,7 @@ namespace Himii
         m_World->SetActiveScene(m_EditorScene);
 
         m_SceneHierarchyPanel.SetContext(m_ActiveScene);
+        m_SceneHierarchyPanel.SetPrefabAuthoringEnabled(true);
 
         if (wasPlaying)
         {
