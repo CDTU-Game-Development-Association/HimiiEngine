@@ -43,6 +43,7 @@
 #include "Module/Render/RHI/RenderCommand.h"
 #include <algorithm>
 #include <array>
+#include <cstring>
 #include <filesystem>
 #include <GLFW/glfw3.h>
 
@@ -53,6 +54,56 @@
 
 namespace Himii
 {
+    namespace
+    {
+        std::string BuildPrefabFileName(const std::string& entityName)
+        {
+            constexpr const char* invalidCharacters = "<>:\"/\\|?*";
+            std::string sanitizedName;
+            sanitizedName.reserve(entityName.size());
+            for (char rawCharacter : entityName)
+            {
+                const unsigned char character = static_cast<unsigned char>(rawCharacter);
+                if (character < 32 || std::strchr(invalidCharacters, rawCharacter) != nullptr)
+                    sanitizedName.push_back('_');
+                else
+                    sanitizedName.push_back(rawCharacter);
+            }
+
+            while (!sanitizedName.empty()
+                   && (sanitizedName.back() == ' ' || sanitizedName.back() == '.'))
+                sanitizedName.pop_back();
+
+            std::size_t startIndex = 0;
+            while (startIndex < sanitizedName.size() && sanitizedName[startIndex] == ' ')
+                ++startIndex;
+            sanitizedName.erase(0, startIndex);
+
+            if (sanitizedName.empty())
+                sanitizedName = "Prefab";
+            return sanitizedName + ".hprefab";
+        }
+
+        std::filesystem::path AllocateUniquePrefabPath(const std::filesystem::path& directory,
+                                                       const std::string& fileName)
+        {
+            std::filesystem::path destination = directory / fileName;
+            if (!std::filesystem::exists(destination))
+                return destination;
+
+            const std::string stem = std::filesystem::path(fileName).stem().string();
+            const std::string extension = std::filesystem::path(fileName).extension().string();
+            for (int duplicateIndex = 1; duplicateIndex < 1000; ++duplicateIndex)
+            {
+                destination = directory / (stem + " (" + std::to_string(duplicateIndex) + ")" + extension);
+                if (!std::filesystem::exists(destination))
+                    return destination;
+            }
+
+            return {};
+        }
+    }
+
     EditorLayer::EditorLayer() :
         Layer("Example2D"), m_CameraController(1280.0f / 720.0f)
     {
@@ -694,6 +745,36 @@ namespace Himii
                 m_ShowMaterialEditor = true;
                 m_MaterialEditorPanel.SetMaterialHandle(materialEditorRequest);
             }
+
+            UUID prefabEntityIdentifier = UUID(0);
+            std::filesystem::path prefabDirectory;
+            if (m_ContentBrowserPanel.ConsumePrefabSaveRequest(prefabEntityIdentifier, prefabDirectory)
+                && m_SceneState == SceneState::Edit && m_EditorScene)
+            {
+                Entity prefabEntity = m_EditorScene->GetEntityByUUID(prefabEntityIdentifier);
+                if (prefabEntity)
+                {
+                    const std::filesystem::path prefabFilePath =
+                            AllocateUniquePrefabPath(prefabDirectory, BuildPrefabFileName(prefabEntity.GetName()));
+                    if (!prefabFilePath.empty()
+                        && PrefabSerializer::Save(m_EditorScene, prefabEntity, prefabFilePath)
+                        && Project::GetActive())
+                    {
+                        std::error_code relativeError;
+                        const std::filesystem::path relativePath = std::filesystem::relative(
+                                prefabFilePath, Project::GetAssetDirectory(), relativeError);
+                        if (!relativeError)
+                        {
+                            if (auto assetManager = ResourceSystem::GetAssetManager())
+                                assetManager->ImportAsset(relativePath);
+                        }
+                    }
+                }
+            }
+
+            const std::filesystem::path sceneOpenRequest = m_ContentBrowserPanel.GetSceneOpenRequest();
+            if (!sceneOpenRequest.empty())
+                OpenScene(sceneOpenRequest);
 
             ImGui::Begin("Stats");
             auto stats = Himii::Renderer2D::GetStatistics();
@@ -2921,6 +3002,7 @@ namespace Himii
 
         m_SceneHierarchyPanel.SetContext(m_ActiveScene);
         m_SceneHierarchyPanel.SetPrefabAuthoringEnabled(false);
+        m_ContentBrowserPanel.SetPrefabDropEnabled(false);
     }
 
     void EditorLayer::OnSceneSimulate()
@@ -2937,6 +3019,7 @@ namespace Himii
 
         m_SceneHierarchyPanel.SetContext(m_ActiveScene);
         m_SceneHierarchyPanel.SetPrefabAuthoringEnabled(false);
+        m_ContentBrowserPanel.SetPrefabDropEnabled(false);
     }
 
     void EditorLayer::OnSceneStop()
@@ -2956,6 +3039,7 @@ namespace Himii
 
         m_SceneHierarchyPanel.SetContext(m_ActiveScene);
         m_SceneHierarchyPanel.SetPrefabAuthoringEnabled(true);
+        m_ContentBrowserPanel.SetPrefabDropEnabled(true);
 
         if (wasPlaying)
         {

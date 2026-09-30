@@ -1,5 +1,6 @@
 #include "Hepch.h"
 #include "ContentBrowserPanel.h"
+#include "panel/SceneHierarchyPanel.h"
 #include "EditorExternalFileDrop.h"
 #include "Project/Project.h"
 #include "Resource/ResourceSystem.h"
@@ -33,6 +34,7 @@
 #include <cstring>
 #include <unordered_set>
 #include <imgui.h>
+#include <imgui_internal.h>
 
 namespace Himii
 {
@@ -300,6 +302,11 @@ namespace Himii
                 {
                     m_CurrentDirectory = breadcrumbs[i];
                 }
+                if (ImGui::BeginDragDropTarget())
+                {
+                    TryAcceptPrefabDrop(breadcrumbs[i]);
+                    ImGui::EndDragDropTarget();
+                }
                 ImGui::SameLine();
             }
             ImGui::NewLine();
@@ -338,6 +345,17 @@ namespace Himii
 
             if (ImGui::BeginChild("##ContentBrowserGrid", ImVec2(0.0f, -detailBarHeight), false))
             {
+                // 先铺整块目录，再让文件夹图标覆盖它。后提交的目标在鼠标命中时优先。
+                if (m_PrefabDropEnabled)
+                {
+                    ImGuiWindow* contentWindow = ImGui::GetCurrentWindow();
+                    if (ImGui::BeginDragDropTargetCustom(contentWindow->InnerRect, contentWindow->ID))
+                    {
+                        TryAcceptPrefabDrop(m_CurrentDirectory);
+                        ImGui::EndDragDropTarget();
+                    }
+                }
+
                 const float panelWidth = ImGui::GetContentRegionAvail().x;
                 int columnCount = static_cast<int>((panelWidth + padding) / (cellWidth + padding));
                 if (columnCount < 1)
@@ -437,6 +455,12 @@ namespace Himii
                         ImGui::EndDragDropSource();
                     }
 
+                    if (directoryEntry.is_directory() && ImGui::BeginDragDropTarget())
+                    {
+                        TryAcceptPrefabDrop(path);
+                        ImGui::EndDragDropTarget();
+                    }
+
                     const bool thumbnailDoubleClicked =
                             ImGui::IsItemHovered()
                             && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
@@ -475,6 +499,10 @@ namespace Himii
                         {
                             OpenShaderAssetInIde(Project::GetAssetFileSystemPath(relativePath));
                         }
+                        else if (path.extension() == ".himii")
+                        {
+                            RequestOpenScene(relativePath);
+                        }
                     }
                     else if (thumbnailClicked)
                     {
@@ -496,10 +524,18 @@ namespace Himii
                     {
                         if (directoryEntry.is_directory())
                             m_CurrentDirectory /= path.filename();
+                        else if (path.extension() == ".himii")
+                            RequestOpenScene(relativePath);
                     }
                     else if (labelClicked)
                     {
                         m_SelectedItemDisplayName = fileNameString;
+                    }
+
+                    if (directoryEntry.is_directory() && ImGui::BeginDragDropTarget())
+                    {
+                        TryAcceptPrefabDrop(path);
+                        ImGui::EndDragDropTarget();
                     }
 
                     ImGui::Dummy(ImVec2(cellWidth, 0.0f));
@@ -918,6 +954,29 @@ namespace Himii
         return true;
     }
 
+    void ContentBrowserPanel::RequestOpenScene(const std::filesystem::path& relativePath)
+    {
+        m_SceneOpenRequest = Project::GetAssetFileSystemPath(relativePath);
+    }
+
+    bool ContentBrowserPanel::TryAcceptPrefabDrop(const std::filesystem::path& directory)
+    {
+        if (!m_PrefabDropEnabled)
+            return false;
+
+        const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(HierarchyEntityDragDropPayload);
+        if (!payload || payload->DataSize != static_cast<int>(sizeof(UUID)))
+            return false;
+
+        const UUID entityIdentifier = *static_cast<const UUID*>(payload->Data);
+        if (static_cast<uint64_t>(entityIdentifier) == 0)
+            return false;
+
+        m_PrefabSaveEntityIdentifier = entityIdentifier;
+        m_PrefabSaveDirectory = directory;
+        return true;
+    }
+
     void ContentBrowserPanel::DrawTree(const std::filesystem::path& path,
                                        const std::filesystem::path& assetsPath)
     {
@@ -940,6 +999,12 @@ namespace Himii
 
         if (ImGui::IsItemClicked())
             m_CurrentDirectory = path;
+
+        if (ImGui::BeginDragDropTarget())
+        {
+            TryAcceptPrefabDrop(path);
+            ImGui::EndDragDropTarget();
+        }
 
         if (opened)
         {

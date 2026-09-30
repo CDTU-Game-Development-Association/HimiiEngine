@@ -24,8 +24,6 @@ namespace Himii
 {
     namespace
     {
-        constexpr const char* kEntityDragDropPayloadType = "HIMII_ENTITY_UUID";
-
         bool ContainsCaseInsensitive(const std::string &text, const std::string &searchFilter)
         {
             if (searchFilter.empty())
@@ -126,7 +124,7 @@ namespace Himii
 
         if (ImGui::BeginDragDropTarget())
         {
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kEntityDragDropPayloadType))
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(HierarchyEntityDragDropPayload))
             {
                 UUID draggedEntityIdentifier = *static_cast<const UUID*>(payload->Data);
                 Entity draggedEntity = m_Context->GetEntityByUUID(draggedEntityIdentifier);
@@ -532,14 +530,14 @@ namespace Himii
 
         if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
         {
-            ImGui::SetDragDropPayload(kEntityDragDropPayloadType, &entityIdentifier, sizeof(UUID));
+            ImGui::SetDragDropPayload(HierarchyEntityDragDropPayload, &entityIdentifier, sizeof(UUID));
             ImGui::TextUnformatted(tag.c_str());
             ImGui::EndDragDropSource();
         }
 
         if (ImGui::BeginDragDropTarget())
         {
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kEntityDragDropPayloadType))
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(HierarchyEntityDragDropPayload))
             {
                 UUID draggedEntityIdentifier = *static_cast<const UUID*>(payload->Data);
                 Entity draggedEntity = m_Context->GetEntityByUUID(draggedEntityIdentifier);

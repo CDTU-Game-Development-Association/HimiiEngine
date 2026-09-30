@@ -10,6 +10,9 @@
 
 namespace Himii
 {
+    /// Hierarchy 实体拖放载荷。Content Browser 接收同一标识，用来把实体存成 Prefab。
+    inline constexpr const char* HierarchyEntityDragDropPayload = "HIMII_ENTITY_UUID";
+
     class EditorCommandHistory;
 
     class SceneHierarchyPanel {

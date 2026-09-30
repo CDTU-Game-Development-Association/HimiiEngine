@@ -18,6 +18,26 @@ namespace Himii
 
         void Refresh();
         void SetOnScriptChanged(std::function<void()> callback) { m_OnScriptChanged = std::move(callback); }
+        void SetPrefabDropEnabled(bool enabled) { m_PrefabDropEnabled = enabled; }
+
+        std::filesystem::path GetSceneOpenRequest()
+        {
+            std::filesystem::path path = m_SceneOpenRequest;
+            m_SceneOpenRequest.clear();
+            return path;
+        }
+
+        bool ConsumePrefabSaveRequest(UUID& entityIdentifier, std::filesystem::path& directory)
+        {
+            if (static_cast<uint64_t>(m_PrefabSaveEntityIdentifier) == 0)
+                return false;
+
+            entityIdentifier = m_PrefabSaveEntityIdentifier;
+            directory = m_PrefabSaveDirectory;
+            m_PrefabSaveEntityIdentifier = UUID(0);
+            m_PrefabSaveDirectory.clear();
+            return true;
+        }
 
         /// 从操作系统拖入或文件对话框导入资源到当前目录
         void ImportFilesFromPaths(const std::vector<std::filesystem::path>& sourcePaths);
@@ -95,6 +115,8 @@ namespace Himii
         Ref<Texture2D> m_SceneIcon;
         
         void DrawTree(const std::filesystem::path& path, const std::filesystem::path& assetsPath);
+        void RequestOpenScene(const std::filesystem::path& relativePath);
+        bool TryAcceptPrefabDrop(const std::filesystem::path& directory);
         void DrawContentDetailBar(float barWidth);
         bool IsOnPathToCurrentDirectory(const std::filesystem::path& path) const;
         static std::string TruncateTextToWidth(const char* text, float maxWidth);
@@ -114,6 +136,10 @@ namespace Himii
         AssetHandle m_TextureInspectorRequest = 0;
         AssetHandle m_MaterialEditorRequest = 0;
         std::filesystem::path m_AnimationEditorRequest;
+        std::filesystem::path m_SceneOpenRequest;
+        UUID m_PrefabSaveEntityIdentifier = UUID(0);
+        std::filesystem::path m_PrefabSaveDirectory;
+        bool m_PrefabDropEnabled = true;
         CreationType m_PendingCreationType = CreationType::None;
         AssetHandle m_PendingCreationShaderHandle = 0;
         std::filesystem::path m_CreationTargetDirectory;
